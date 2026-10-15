@@ -41,6 +41,13 @@ M = [
  ("整理: 依頼中の状態を覚えない", "index.html", "if (o) localStorage.setItem('organize', JSON.stringify(o)); else", "if (false) localStorage.setItem('organize', JSON.stringify(o)); else", "organize"),
  ("整理: 失敗を成功扱いする", "index.html", "if (run.conclusion === 'success') {", "if (true) {", "organize"),
  ("ホーム: リストの件数を出さない", "index.html", "    ${tilesHtml()}\n", "", "items"),
+ ("リスト: 削除時に項目をインボックスへ戻さない", "index.html", "inside.map(i => changed(i, { list: 'inbox' }))", "[]", "lists"),
+ ("リスト: 固定のリストも削除できる", "index.html", "$('#list-delete').hidden = fixed;", "$('#list-delete').hidden = false;", "lists"),
+ ("リスト: 同じ名前を許す", "index.html", "if (activeLists().some(l => l.id !== exceptId && l.name === n))", "if (false)", "lists"),
+ ("リスト: 変更を GitHub に送らない", "index.html", "const changed = toRemote + lists.toRemote;", "const changed = toRemote;", "lists"),
+ ("リスト: ほかの端末の変更を取り込まない", "index.html", "else if (parseTime(l.updated_at) > parseTime(state.lists[i].updated_at)) { state.lists[i] = l; listsChanged = true; }", "", "lists"),
+ ("リスト: 並べ替えが効かない", "index.html", "await saveLists([changedList(cur, { order: other.order }), changedList(other, { order: cur.order })]);", "", "lists"),
+ ("リスト: 定義が無いときも書き込む", "index.html", "? DEFAULT_LISTS.map(l => ({ ...l }))\n", "? []\n", "lists"),
  ("オフライン: キャッシュを使わない", "sw.js", "if (cached) {", "if (false) {", "offline"),
  ("トークン: 設定画面に表示してしまう", "index.html", "$('#set-token').value = '';", "$('#set-token').value = state.token;", "sync"),
 ]
