@@ -167,6 +167,16 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 .opts-btn { min-height: 40px; padding: 0 6px; border: 0; background: none; color: var(--accent); font-size: 12px; text-align: left; }
 .capture-opts { border-top: 1px solid var(--line); margin-top: 6px; padding: 10px 2px 2px; display: grid; gap: 10px; }
 
+/* リストの編集 */
+.list-row { display: flex; align-items: center; gap: 6px; min-height: 48px; padding: 4px 8px 4px 14px; }
+.list-row .nm { flex: 1; min-width: 0; word-break: break-word; }
+.list-row .nm small { color: var(--muted); margin-left: 6px; font-size: 11px; }
+.mini-btn { min-width: 40px; min-height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 13px; color: var(--text); }
+.mini-btn:disabled { opacity: .3; }
+.list-add { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+.list-add .field { margin: 0; }
+.lists-note { font-size: 12px; color: var(--muted); margin: 10px 4px 0; }
+
 /* 整理の依頼 */
 .organize-btn {
   width: 100%; min-height: 40px; margin-top: 6px; border-radius: 12px; border: 1px dashed var(--accent);
@@ -319,6 +329,22 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   <!-- メニュー -->
   <section class="view" id="view-menu" hidden></section>
 
+  <!-- リストの編集 -->
+  <section class="view" id="view-lists" hidden>
+    <h2 class="section-title" style="margin-top:8px">リストを追加</h2>
+    <form class="card" id="list-add-form" autocomplete="off">
+      <label class="field"><span>名前</span><input id="list-add-name" maxlength="20" placeholder="例: 行きたい場所"></label>
+      <div class="list-add">
+        <label class="field"><span>種類</span>
+          <select id="list-add-kind"><option value="action">実行するリスト</option><option value="stock">ためておくリスト</option></select>
+        </label>
+        <button class="btn btn-primary" type="submit">追加</button>
+      </div>
+    </form>
+    <div id="lists-dynamic"></div>
+    <p class="lists-note">インボックス・今日やる・やることは、アプリの仕組みに使うため削除できません(名前は変えられます)。リストを削除すると、中の項目はインボックスに戻ります。</p>
+  </section>
+
   <!-- 完了済み -->
   <section class="view" id="view-done" hidden></section>
 
@@ -397,6 +423,27 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   </form>
 </dialog>
 
+<!-- リストの編集ダイアログ -->
+<dialog id="list-dialog" aria-labelledby="list-dialog-title">
+  <form method="dialog" id="list-form" autocomplete="off">
+    <div class="dlg-head">
+      <button class="text-btn" type="button" id="list-cancel">キャンセル</button>
+      <h2 id="list-dialog-title">リストの編集</h2>
+      <button class="text-btn strong" type="submit">保存</button>
+    </div>
+    <div class="dlg-body">
+      <label class="field"><span>名前</span><input id="list-name" maxlength="20"></label>
+      <label class="field"><span>種類</span>
+        <select id="list-kind"><option value="action">実行するリスト</option><option value="stock">ためておくリスト(メニューから開いたときだけ表示)</option></select>
+        <small id="list-kind-note"></small>
+      </label>
+      <div class="dlg-foot">
+        <button class="btn btn-block btn-danger" type="button" id="list-delete">このリストを削除</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
 <div class="toast" id="toast" role="status" aria-live="polite" hidden>
   <span id="toast-msg"></span><button type="button" id="toast-action" hidden></button>
 </div>
@@ -407,30 +454,26 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 /* =========================================================
  * 定数
  * ======================================================= */
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 const SCHEMA_VERSION = 1;
 const DB_NAME = 'nagekomi';
 const DB_VERSION = 1;
 const API = 'https://api.github.com';
 const DEFAULT_SETTINGS = { owner: '', repo: '', branch: 'main', path: 'items.json' };
 
-// list の値(データに保存する識別子)と画面上の名前。
+// リストの初期値。id は項目の list に保存する識別子、name は画面上の名前。
 // stock は「ためておくリスト」で、メニューから呼び出したときだけ表示する。
-const LISTS = [
-  { id: 'inbox',    name: 'インボックス' },
-  { id: 'today',    name: '今日やる' },
-  { id: 'todo',     name: 'やること' },
-  { id: 'work',     name: '仕事へ転記' },
-  { id: 'chores',   name: '家事' },
-  { id: 'shopping', name: '通販で買う' },
-  { id: 'someday',  name: 'いつかやりたい' },
-  { id: 'cards',    name: '買いたいカード', stock: true },
-  { id: 'books',    name: '読みたい本', stock: true },
-  { id: 'movies',   name: '見たい映画', stock: true },
-  { id: 'recipes',  name: '作りたいご飯', stock: true },
-  { id: 'places',   name: '行った店', stock: true },
-];
-const LIST_BY_ID = new Map(LISTS.map(l => [l.id, l]));
+// リストは利用者が追加・変更・削除でき、items.json の lists に保存して同期する(項目と同じく updated_at の新しいほうを採用)
+const DEFAULT_LISTS_TIME = '2026-10-15T00:00:00+09:00';
+const DEFAULT_LISTS = [
+  ['inbox', 'インボックス'], ['today', '今日やる'], ['todo', 'やること'], ['work', '仕事へ転記'],
+  ['chores', '家事'], ['shopping', '通販で買う'], ['someday', 'いつかやりたい'],
+  ['cards', '買いたいカード', true], ['books', '読みたい本', true], ['movies', '見たい映画', true],
+  ['recipes', '作りたいご飯', true], ['places', '行った店', true],
+].map(([id, name, stock], i) => ({ id, name, stock: !!stock, order: i, updated_at: DEFAULT_LISTS_TIME, deleted: false }));
+// アプリの仕組みに関わるので削除できないリスト(名前の変更はできる)
+const FIXED_LISTS = new Set(['inbox', 'today', 'todo']);
+const LIST_NAME_MAX = 20;
 // 古い順(=後回しにしたものが後ろ)で並べるリスト。それ以外は新しい順。
 const QUEUE_LISTS = new Set(['today', 'todo']);
 
@@ -439,6 +482,7 @@ const QUEUE_LISTS = new Set(['today', 'todo']);
  * ======================================================= */
 const state = {
   items: new Map(),     // id -> item
+  lists: DEFAULT_LISTS.map(l => ({ ...l })),
   pending: {},          // id -> 端末内での変更回数(未送信の印)
   settings: { ...DEFAULT_SETTINGS },
   token: '',
@@ -454,8 +498,14 @@ const $ = sel => document.querySelector(sel);
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+function activeLists() {
+  return state.lists.filter(l => !l.deleted).sort((a, b) => (a.order - b.order) || String(a.id).localeCompare(String(b.id)));
+}
+function listById(id) {
+  return state.lists.find(l => l.id === id && !l.deleted) || null;
+}
 function listName(id) {
-  const l = LIST_BY_ID.get(id);
+  const l = listById(id);
   return l ? l.name : String(id || '(なし)');
 }
 function uuid() {
@@ -605,13 +655,15 @@ function reqP(req) {
 async function loadAll() {
   const db = await openDB();
   const tx = db.transaction(['items', 'meta'], 'readonly');
-  const [items, pending, settings, token, sync] = await Promise.all([
+  const [items, pending, settings, token, sync, lists] = await Promise.all([
     reqP(tx.objectStore('items').getAll()),
     reqP(tx.objectStore('meta').get('pending')),
     reqP(tx.objectStore('meta').get('settings')),
     reqP(tx.objectStore('meta').get('token')),
     reqP(tx.objectStore('meta').get('sync')),
+    reqP(tx.objectStore('meta').get('lists')),
   ]);
+  if (Array.isArray(lists) && lists.length) state.lists = lists;
   state.items = new Map(items.map(i => [i.id, i]));
   state.pending = pending || {};
   state.settings = { ...DEFAULT_SETTINGS, ...(settings || {}) };
@@ -647,6 +699,38 @@ async function saveLocal(items) {
   scheduleSync(1500);
 }
 // extra: { due, estimate_min } を投げ込み時に指定できる
+// リストの変更を保存する。項目の付け替え(削除時にインボックスへ戻す)も同じトランザクションで書く
+const listKey = id => 'list:' + id;
+async function saveLists(lists, items = []) {
+  for (const l of lists) {
+    const i = state.lists.findIndex(x => x.id === l.id);
+    if (i >= 0) state.lists[i] = l; else state.lists.push(l);
+    state.pending[listKey(l.id)] = (state.pending[listKey(l.id)] || 0) + 1;
+  }
+  for (const it of items) {
+    state.items.set(it.id, it);
+    state.pending[it.id] = (state.pending[it.id] || 0) + 1;
+  }
+  const listsCopy = state.lists.map(l => ({ ...l }));
+  const pendingCopy = { ...state.pending };
+  try {
+    await withTx(['items', 'meta'], 'readwrite', tx => {
+      const s = tx.objectStore('items');
+      for (const it of items) s.put(it);
+      tx.objectStore('meta').put(listsCopy, 'lists');
+      tx.objectStore('meta').put(pendingCopy, 'pending');
+    });
+  } catch (e) {
+    showToast('端末への保存に失敗しました: ' + (e && e.message || e));
+    throw e;
+  } finally {
+    render();
+  }
+  scheduleSync(1500);
+}
+function changedList(old, changes) {
+  return { ...old, ...changes, updated_at: nextStamp(old.updated_at) };
+}
 function newItem(text, list = 'inbox', extra = {}) {
   const ts = nextStamp(null);
   return {
@@ -738,7 +822,7 @@ function closedItems() {
 }
 function unknownListIds() {
   const ids = new Set();
-  for (const i of visibleItems()) if (i.status === 'open' && !LIST_BY_ID.has(i.list)) ids.add(i.list);
+  for (const i of visibleItems()) if (i.status === 'open' && !listById(i.list)) ids.add(i.list);
   return [...ids];
 }
 
@@ -821,11 +905,11 @@ function tilesHtml() {
     </a>`;
   const of = ids => open.filter(i => ids.includes(i.list));
   const overdueOf = arr => arr.filter(i => { const d = dueDate(i); return d && d < today; }).length;
-  const tiles = LISTS.filter(l => !l.stock && l.id !== 'inbox').map(l => {
+  const tiles = activeLists().filter(l => !l.stock && l.id !== 'inbox').map(l => {
     const arr = of([l.id]);
-    return tile(`#/list/${l.id}`, l.name, arr.length, overdueOf(arr));
+    return tile(`#/list/${encodeURIComponent(l.id)}`, l.name, arr.length, overdueOf(arr));
   });
-  const stock = of(LISTS.filter(l => l.stock).map(l => l.id));
+  const stock = of(activeLists().filter(l => l.stock).map(l => l.id));
   tiles.push(tile('#/menu', 'ためておく', stock.length, overdueOf(stock)));
   const doneToday = visibleItems().filter(i => i.status === 'done' && i.done_at && dateStr(new Date(parseTime(i.done_at))) === today).length;
   tiles.push(tile('#/done', '今日の完了', doneToday));
@@ -838,7 +922,7 @@ function renderHome() {
   const head = queue[0];
   const focus = head
     ? focusCardHtml(head, queue.length)
-    : `<div class="focus-card"><p class="empty">「今日やる」「やること」は空です。<br>インボックスの項目を振り分けると、ここに1件ずつ表示されます。</p></div>`;
+    : `<div class="focus-card"><p class="empty">「${esc(listName('today'))}」「${esc(listName('todo'))}」は空です。<br>インボックスの項目を振り分けると、ここに1件ずつ表示されます。</p></div>`;
 
   $('#home-dynamic').innerHTML = `
     <a class="inbox-link" href="#/list/inbox" data-nav>
@@ -849,8 +933,8 @@ function renderHome() {
     <h2 class="section-title">1件表示</h2>
     ${focus}
     ${gapHtml()}
-    <h2 class="section-title">今日やる(${today.length})</h2>
-    ${today.length ? `<ul class="rows">${today.map(i => rowHtml(i)).join('')}</ul>` : '<p class="empty">今日やることはありません。</p>'}
+    <h2 class="section-title">${esc(listName('today'))}(${today.length})</h2>
+    ${today.length ? `<ul class="rows">${today.map(i => rowHtml(i)).join('')}</ul>` : `<p class="empty">「${esc(listName('today'))}」の項目はありません。</p>`}
     <h2 class="section-title">リスト</h2>
     ${tilesHtml()}
   `;
@@ -878,15 +962,98 @@ function renderMenu() {
   const unknown = unknownListIds();
   $('#view-menu').innerHTML = `
     <h2 class="section-title" style="margin-top:8px">リスト</h2>
-    <ul class="menu-list">${LISTS.filter(l => !l.stock).map(l => link(l.id, l.name)).join('')}</ul>
+    <ul class="menu-list">${activeLists().filter(l => !l.stock).map(l => link(l.id, l.name)).join('')}</ul>
     <h2 class="section-title">ためておくリスト</h2>
-    <ul class="menu-list">${LISTS.filter(l => l.stock).map(l => link(l.id, l.name)).join('')}</ul>
+    <ul class="menu-list">${activeLists().filter(l => l.stock).map(l => link(l.id, l.name)).join('') || '<li class="empty">ありません</li>'}</ul>
     ${unknown.length ? `<h2 class="section-title">その他のリスト</h2><ul class="menu-list">${unknown.map(id => link(id, id)).join('')}</ul>` : ''}
     <h2 class="section-title">その他</h2>
     <ul class="menu-list">
+      <li><a href="#/lists" data-nav><span>リストの追加・編集</span><span class="n">›</span></a></li>
       <li><a href="#/done" data-nav><span>完了済み</span><span class="n">${closedItems().length} ›</span></a></li>
       <li><a href="#/settings" data-nav><span>設定・同期</span><span class="n">›</span></a></li>
     </ul>`;
+}
+
+function renderListsEditor() {
+  const open = visibleItems().filter(i => i.status === 'open');
+  const group = (stock, title) => {
+    const ls = activeLists().filter(l => l.stock === stock);
+    const rows = ls.map((l, i) => `<li class="list-row" data-list="${esc(l.id)}">
+        <span class="nm">${esc(l.name)}<small>${open.filter(x => x.list === l.id).length} 件</small></span>
+        <button type="button" class="mini-btn" data-action="list-up" aria-label="上へ"${i === 0 ? ' disabled' : ''}>↑</button>
+        <button type="button" class="mini-btn" data-action="list-down" aria-label="下へ"${i === ls.length - 1 ? ' disabled' : ''}>↓</button>
+        <button type="button" class="mini-btn" data-action="list-edit">編集</button>
+      </li>`).join('');
+    return `<h2 class="section-title">${title}</h2>${rows ? `<ul class="menu-list">${rows}</ul>` : '<p class="empty">ありません</p>'}`;
+  };
+  $('#lists-dynamic').innerHTML = group(false, '実行するリスト') + group(true, 'ためておくリスト');
+}
+
+function validListName(name, exceptId) {
+  const n = String(name || '').trim();
+  if (!n) return { error: '名前を入力してください' };
+  if (n.length > LIST_NAME_MAX) return { error: `名前は${LIST_NAME_MAX}文字までです` };
+  if (activeLists().some(l => l.id !== exceptId && l.name === n)) return { error: `「${n}」はすでにあります` };
+  return { name: n };
+}
+async function addList(name, stock) {
+  const v = validListName(name);
+  if (v.error) { showToast(v.error); return null; }
+  const order = Math.max(-1, ...state.lists.map(l => Number(l.order) || 0)) + 1;
+  const l = { id: 'l-' + uuid().slice(0, 8), name: v.name, stock: !!stock, order, updated_at: nextStamp(null), deleted: false };
+  await saveLists([l]);
+  showToast(`「${v.name}」を追加しました`);
+  return l;
+}
+async function moveList(id, dir) {
+  const cur = listById(id);
+  if (!cur) return;
+  const siblings = activeLists().filter(l => l.stock === cur.stock);
+  const i = siblings.findIndex(l => l.id === id);
+  const other = siblings[i + dir];
+  if (!other) return;
+  await saveLists([changedList(cur, { order: other.order }), changedList(other, { order: cur.order })]);
+}
+let editingList = null;
+function openListEditor(id) {
+  const l = listById(id);
+  if (!l) return;
+  editingList = id;
+  const fixed = FIXED_LISTS.has(id);
+  $('#list-name').value = l.name;
+  $('#list-kind').value = l.stock ? 'stock' : 'action';
+  $('#list-kind').disabled = fixed;
+  $('#list-kind-note').textContent = fixed ? 'このリストはアプリの仕組みに使うため、種類の変更と削除はできません。' : '';
+  $('#list-delete').hidden = fixed;
+  const dlg = $('#list-dialog');
+  if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+}
+function closeListEditor() {
+  editingList = null;
+  const dlg = $('#list-dialog');
+  if (dlg.open) { if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open'); }
+}
+async function saveListEditor() {
+  const l = editingList && listById(editingList);
+  if (!l) return closeListEditor();
+  const v = validListName($('#list-name').value, l.id);
+  if (v.error) { showToast(v.error); return; }
+  const stock = FIXED_LISTS.has(l.id) ? l.stock : $('#list-kind').value === 'stock';
+  closeListEditor();
+  if (v.name === l.name && stock === l.stock) return;
+  await saveLists([changedList(l, { name: v.name, stock })]);
+  showToast('保存しました');
+}
+async function deleteList(id) {
+  const l = listById(id);
+  if (!l || FIXED_LISTS.has(id)) return;
+  const inside = visibleItems().filter(i => i.list === id);
+  const openN = inside.filter(i => i.status === 'open').length;
+  if (!confirm(`「${l.name}」を削除しますか?` + (inside.length ? `\n中の項目(未完了 ${openN} 件)はインボックスに戻ります。` : ''))) return;
+  closeListEditor();
+  await saveLists([changedList(l, { deleted: true })], inside.map(i => changed(i, { list: 'inbox' })));
+  showToast(`「${l.name}」を削除しました` + (openN ? `(${openN} 件をインボックスへ)` : ''));
+  if (route.view === 'list' && route.arg === id) location.replace('#/lists');
 }
 
 function renderDone() {
@@ -946,6 +1113,7 @@ function render() {
     case 'menu': renderMenu(); break;
     case 'done': renderDone(); break;
     case 'settings': renderSettingsStatus(); break;
+    case 'lists': renderListsEditor(); break;
   }
 }
 
@@ -957,14 +1125,14 @@ function parseRoute() {
   const parts = (location.hash.replace(/^#/, '') || '/').split('/').filter(Boolean);
   const view = parts[0] || 'home';
   if (view === 'list' && parts[1]) return { view: 'list', arg: decodeURIComponent(parts[1]) };
-  if (['menu', 'done', 'settings'].includes(view)) return { view, arg: null };
+  if (['menu', 'done', 'settings', 'lists'].includes(view)) return { view, arg: null };
   return { view: 'home', arg: null };
 }
 function applyRoute() {
   const prev = route;
   route = parseRoute();
-  for (const v of ['home', 'list', 'menu', 'done', 'settings']) $('#view-' + v).hidden = v !== route.view;
-  const titles = { home: '投げ込み', menu: 'メニュー', done: '完了済み', settings: '設定・同期' };
+  for (const v of ['home', 'list', 'menu', 'done', 'settings', 'lists']) $('#view-' + v).hidden = v !== route.view;
+  const titles = { home: '投げ込み', menu: 'メニュー', done: '完了済み', settings: '設定・同期', lists: 'リストの追加・編集' };
   $('#title').textContent = route.view === 'list' ? listName(route.arg) : titles[route.view];
   const nav = $('#nav-btn');
   if (route.view === 'home') { nav.textContent = '☰'; nav.setAttribute('aria-label', 'メニュー'); }
@@ -1025,8 +1193,8 @@ function openEditor(id) {
   const it = state.items.get(id);
   if (!it) return;
   const sel = $('#edit-list');
-  const opts = LISTS.map(l => `<option value="${esc(l.id)}">${esc(l.name)}${l.stock ? '(ためておく)' : ''}</option>`);
-  if (!LIST_BY_ID.has(it.list)) opts.push(`<option value="${esc(it.list)}">${esc(it.list)}</option>`);
+  const opts = activeLists().map(l => `<option value="${esc(l.id)}">${esc(l.name)}${l.stock ? '(ためておく)' : ''}</option>`);
+  if (!listById(it.list)) opts.push(`<option value="${esc(it.list)}">${esc(it.list)}</option>`);
   sel.innerHTML = opts.join('');
   const initial = {
     text: it.text || '',
@@ -1260,6 +1428,13 @@ function bindEvents() {
         render(); break;
       case 'sync-now': syncNow(true); break;
       case 'organize': requestOrganize(); break;
+      case 'list-up': case 'list-down': case 'list-edit': {
+        const lid = btn.closest('[data-list]') && btn.closest('[data-list]').dataset.list;
+        if (!lid) break;
+        if (btn.dataset.action === 'list-edit') openListEditor(lid);
+        else moveList(lid, btn.dataset.action === 'list-up' ? -1 : 1);
+        break;
+      }
     }
   });
 
@@ -1286,6 +1461,17 @@ function bindEvents() {
     }
   });
   $('#edit-delete').addEventListener('click', () => { if (editing) removeItem(editing.id); });
+
+  // リストの追加・編集
+  $('#list-add-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const l = await addList($('#list-add-name').value, $('#list-add-kind').value === 'stock');
+    if (l) $('#list-add-name').value = '';
+  });
+  $('#list-form').addEventListener('submit', e => { e.preventDefault(); saveListEditor(); });
+  $('#list-cancel').addEventListener('click', closeListEditor);
+  $('#list-dialog').addEventListener('cancel', e => { e.preventDefault(); closeListEditor(); });
+  $('#list-delete').addEventListener('click', () => { if (editingList) deleteList(editingList); });
 
   // 設定
   $('#settings-form').addEventListener('submit', async e => {
@@ -1411,7 +1597,7 @@ async function fetchRemote() {
     // ファイルが無いのか、リポジトリ自体に届かないのかを確かめる
     const repoRes = await gh(repoPath());
     if (!repoRes.ok) throw await errorFrom(repoRes, 'リポジトリの確認');
-    return { sha: null, doc: { schema_version: SCHEMA_VERSION, items: [] } };
+    return { sha: null, doc: migrate({ schema_version: SCHEMA_VERSION, items: [] }) };
   }
   if (!res.ok) throw await errorFrom(res, 'データの取得');
   const meta = await res.json();
@@ -1438,6 +1624,11 @@ function migrate(doc) {
     else throw new SyncError('GitHub 上のデータに items の一覧がありません。');
   }
   doc.items = doc.items.filter(i => i && typeof i === 'object' && typeof i.id === 'string' && i.id);
+  // lists は後から加えた欄。無ければ「初期のリストのまま」とみなす(利用者がリストを変えたときに初めて書き込む)
+  if (doc.lists !== undefined && !Array.isArray(doc.lists)) throw new SyncError('GitHub 上のデータの lists が正しくありません。');
+  doc.lists = doc.lists === undefined
+    ? DEFAULT_LISTS.map(l => ({ ...l }))
+    : doc.lists.filter(l => l && typeof l === 'object' && typeof l.id === 'string' && l.id && typeof l.name === 'string');
   doc.schema_version = SCHEMA_VERSION;
   return doc;
 }
@@ -1453,9 +1644,10 @@ function mergeItems(localArr, remoteArr) {
   return { merged: [...merged.values()], toRemote };
 }
 // 5. 統合結果を GitHub に書き込む
-async function putRemote(doc, items, sha, changed) {
+async function putRemote(doc, items, lists, sha, changed) {
   const sorted = [...items].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)) || a.id.localeCompare(b.id));
-  const out = { ...doc, schema_version: SCHEMA_VERSION, items: sorted };
+  const sortedLists = [...lists].sort((a, b) => (a.order - b.order) || a.id.localeCompare(b.id));
+  const out = { ...doc, schema_version: SCHEMA_VERSION, lists: sortedLists, items: sorted };
   const body = {
     message: sha ? `アプリから同期: ${changed} 件の変更` : `アプリから同期: ${state.settings.path} を作成`,
     content: utf8ToBase64(JSON.stringify(out, null, 2) + '\n'),
@@ -1472,13 +1664,20 @@ async function putRemote(doc, items, sha, changed) {
   if (!res.ok) throw await errorFrom(res, 'データの書き込み');
 }
 // 統合結果を端末内に反映する。同期中に端末で変更された項目は、より新しいので残す
-async function applyMerged(merged, pendingSnap) {
+async function applyMerged(merged, mergedLists, pendingSnap) {
   const toWrite = [];
   for (const it of merged) {
     const cur = state.items.get(it.id);
     if (!cur || parseTime(it.updated_at) > parseTime(cur.updated_at)) toWrite.push(it);
   }
   for (const it of toWrite) state.items.set(it.id, it);
+  let listsChanged = false;
+  for (const l of mergedLists) {
+    const i = state.lists.findIndex(x => x.id === l.id);
+    if (i < 0) { state.lists.push(l); listsChanged = true; }
+    else if (parseTime(l.updated_at) > parseTime(state.lists[i].updated_at)) { state.lists[i] = l; listsChanged = true; }
+  }
+  const listsCopy = state.lists.map(l => ({ ...l }));
   for (const [id, rev] of Object.entries(pendingSnap)) {
     if (state.pending[id] === rev) delete state.pending[id];
   }
@@ -1486,6 +1685,7 @@ async function applyMerged(merged, pendingSnap) {
   await withTx(['items', 'meta'], 'readwrite', tx => {
     const s = tx.objectStore('items');
     for (const it of toWrite) s.put(it);
+    if (listsChanged) tx.objectStore('meta').put(listsCopy, 'lists');
     tx.objectStore('meta').put(pendingCopy, 'pending');
   });
 }
@@ -1494,15 +1694,17 @@ async function syncOnce() {
     const pendingSnap = { ...state.pending };
     const remote = await fetchRemote();
     const { merged, toRemote } = mergeItems([...state.items.values()], remote.doc.items);
-    if (toRemote > 0 || !remote.sha) {
+    const lists = mergeItems(state.lists, remote.doc.lists);
+    const changed = toRemote + lists.toRemote;
+    if (changed > 0 || !remote.sha) {
       try {
-        await putRemote(remote.doc, merged, remote.sha, toRemote);
+        await putRemote(remote.doc, merged, lists.merged, remote.sha, changed);
       } catch (e) {
         if (e instanceof ConflictError) continue; // 書き込みの競合: 1 からやり直す
         throw e;
       }
     }
-    await applyMerged(merged, pendingSnap);
+    await applyMerged(merged, lists.merged, pendingSnap);
     return;
   }
   throw new SyncError('書き込みの競合が続いたため、同期できませんでした。しばらくしてから再度お試しください。');
