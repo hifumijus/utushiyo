@@ -1,6 +1,6 @@
 // アプリ本体を端末にキャッシュし、電波がなくても起動できるようにする。
 // 公開内容を変えたら CACHE_VERSION を上げると、古いキャッシュが入れ替わる。
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const CACHE = 'nagekomi-' + CACHE_VERSION;
 const ASSETS = [
   './',
