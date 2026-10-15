@@ -56,12 +56,14 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+  /* 国産の日本語フォントだけを指定する(メイリオ → ヒラギノ角ゴ → 游ゴシック) */
+  font-family: "Meiryo", "メイリオ", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", "Yu Gothic", "YuGothic", "游ゴシック", sans-serif;
   font-size: 16px;
   line-height: 1.5;
   -webkit-tap-highlight-color: transparent;
 }
 button, input, textarea, select { font: inherit; color: inherit; }
+code { font-family: inherit; }
 button { cursor: pointer; }
 [hidden] { display: none !important; }
 
