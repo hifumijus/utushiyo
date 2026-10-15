@@ -406,10 +406,10 @@ function formatTime(ms) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}` +
     `${sign}${p(Math.trunc(off / 60))}:${p(off % 60)}`;
 }
-// 秒単位で、直前の updated_at より必ず新しい時刻を返す
-function nextStamp(prev) {
+// 秒単位で、直前の updated_at(と minMs)より必ず新しい時刻を返す
+function nextStamp(prev, minMs = 0) {
   let t = Math.floor(Date.now() / 1000) * 1000;
-  const p = prev ? parseTime(prev) : 0;
+  const p = Math.max(prev ? parseTime(prev) : 0, minMs);
   if (t <= p) t = Math.floor(p / 1000) * 1000 + 1000;
   return formatTime(t);
 }
@@ -528,10 +528,10 @@ async function addItem(text, list = 'inbox') {
   await saveLocal([it]);
   return it;
 }
-async function updateItem(id, changes) {
+async function updateItem(id, changes, minMs = 0) {
   const old = state.items.get(id);
   if (!old) return null;
-  const it = { ...old, ...changes, updated_at: nextStamp(old.updated_at) };
+  const it = { ...old, ...changes, updated_at: nextStamp(old.updated_at, minMs) };
   await saveLocal([it]);
   return it;
 }
@@ -846,8 +846,11 @@ async function reopen(id) {
   showToast('未完了に戻しました');
 }
 async function later(id) {
-  // 項目の中身は変えず、updated_at を新しくして表示順の最後へ回す
-  await updateItem(id, {});
+  // 項目の中身は変えず、updated_at を同じリストのどの項目よりも新しくして、表示順の最後へ回す
+  const it = state.items.get(id);
+  if (!it) return;
+  const latest = Math.max(0, ...openItemsOf(it.list).filter(i => i.id !== id).map(i => parseTime(i.updated_at)));
+  await updateItem(id, {}, latest);
   showToast('後回しにしました');
 }
 async function removeItem(id) {
