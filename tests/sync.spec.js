@@ -109,7 +109,7 @@ test('GitHub 側の削除(deleted: true)や完了は、端末にも反映され�
   await openApp(page);
   await configureSync(page);
   await expectSyncState(page, 'synced');
-  await page.goto('#/');
+  await page.goto('#/focus');
   await expect(page.locator('.focus-title')).toHaveText('消される項目');
 
   const d = gh.doc();
@@ -118,7 +118,7 @@ test('GitHub 側の削除(deleted: true)や完了は、端末にも反映され�
   await page.locator('#sync-chip').click();
   await page.locator('[data-action=sync-now]').click();
   await expectSyncState(page, 'synced');
-  await page.goto('#/');
+  await page.goto('#/focus');
   await expect(page.locator('.focus-card')).toContainText('空です');
 });
 

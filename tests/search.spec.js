@@ -25,10 +25,10 @@ async function setup(page) {
       await updateItem(it.id, { tags: parseTags(tags) });
     }
   }, PLAN);
-  await page.goto('#/');
+  await page.goto('#/focus');
   await page.locator('[data-action=toggle-search]').click();
 }
-const titles = page => page.locator('#home-dynamic .rows').filter({ has: page.locator('.row-start') }).locator('.row-title');
+const titles = page => page.locator('#focus-dynamic .rows').filter({ has: page.locator('.row-start') }).locator('.row-title');
 const tagChip = (page, t) => page.locator(`[data-action=search-tag][data-tag="${t}"]`);
 const minChip = (page, m) => page.locator(`[data-action=search-min][data-min="${m}"]`);
 
@@ -37,7 +37,7 @@ test('時間とタグを組み合わせて探せる(家で15分 → 家の15分�
   await tagChip(page, '家').click();
   await minChip(page, '15').click();
   await expect(titles(page)).toHaveText(['ゴミ出し', 'エアコン掃除', '電池']); // 期限の近いもの → 時間を使い切れる順
-  await expect(page.locator('#home-dynamic')).toContainText('当てはまる項目(3)');
+  await expect(page.locator('#focus-dynamic')).toContainText('当てはまる項目(3)');
   await expect(page.locator('.gap-hint')).toContainText('見込み時間が未登録の項目(1 件)');
   await expect(page.locator('.search-summary')).toHaveText('15分以内・家');
 });
@@ -62,10 +62,10 @@ test('ためておくリストは切り替えで含められる。仕事へ転�
   await setup(page);
   await minChip(page, '60').click();
   await tagChip(page, '家').click();
-  await expect(page.locator('#home-dynamic')).not.toContainText('ジョンウィック');
+  await expect(page.locator('#focus-dynamic')).not.toContainText('ジョンウィック');
   await page.locator('[data-action=search-stock]').check();
   await expect(titles(page)).toContainText(['ジョンウィック']);
-  await expect(page.locator('#home-dynamic')).not.toContainText('会社の用事');
+  await expect(page.locator('#focus-dynamic')).not.toContainText('会社の用事');
 });
 
 test('選んだ条件は再起動後も残り、結果から計測を始められる', async ({ page }) => {
@@ -77,7 +77,7 @@ test('選んだ条件は再起動後も残り、結果から計測を始めら�
   await expect(tagChip(page, '家')).toHaveClass(/on/);
   await expect(minChip(page, '5')).toHaveClass(/on/);
   await expect(titles(page)).toHaveText(['ゴミ出し', '電池']);
-  await page.locator('#home-dynamic .row', { hasText: '電池' }).locator('[data-action=start]').click();
+  await page.locator('#focus-dynamic .row', { hasText: '電池' }).locator('[data-action=start]').click();
   await expect(page.locator('.focus-title')).toHaveText('電池');
   await expect(page.locator('.focus-card [data-action=pause]')).toBeVisible();
 });
@@ -86,7 +86,7 @@ test('当てはまる項目が多いときは10件まで出し、残りは押す
   await page.clock.install({ time: new Date('2026-10-15T10:00:00+09:00') });
   await openApp(page);
   await page.evaluate(async () => { await addItems(Array.from({ length: 13 }, (_, i) => `用事${i + 1}`), 'todo'); });
-  await page.goto('#/');
+  await page.goto('#/focus');
   await page.locator('[data-action=toggle-search]').click();
   await expect(titles(page)).toHaveCount(10);
   await page.locator('[data-action=search-all]').click();

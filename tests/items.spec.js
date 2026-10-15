@@ -100,16 +100,19 @@ test('リスト画面からはそのリストに直接追加できる', async ({
   expect((await storedItems(page))[0].list).toBe('books');
 });
 
-test('ホームには「ためておくリスト」を出さず、メニューから開ける', async ({ page }) => {
+test('どのタブにも「ためておくリスト」は出さず、メニューから開ける', async ({ page }) => {
   await openApp(page, '#/list/movies');
   await page.locator('#list-capture-text').fill('見たい映画A');
   await page.locator('#list-capture-btn').click();
   await expect(page.locator('#list-dynamic .row')).toHaveCount(1);
 
-  await page.goto('#/');
-  await expect(page.locator('#home-dynamic')).not.toContainText('見たい映画A');
-  await expect(page.locator('#home-dynamic')).not.toContainText('見たい映画');
+  for (const [tab, area] of [['#/', '#home-dynamic'], ['#/focus', '#focus-dynamic'], ['#/overview', '#view-overview']]) {
+    await page.goto(tab);
+    await expect(page.locator(area)).toBeVisible();
+    await expect(page.locator(area)).not.toContainText('見たい映画');
+  }
 
+  await page.goto('#/');
   await page.locator('#nav-btn').click();
   await expect(page.locator('#view-menu')).toContainText('ためておくリスト');
   await page.locator('#view-menu a[href="#/list/movies"]').click();
@@ -128,7 +131,7 @@ test('完了済みの画面に完了した項目が出て、そこから未完�
   expect((await storedItems(page))[0].status).toBe('open');
 });
 
-test('ホーム下部にリストごとの件数・期限切れの数・今日の完了数が出て、押すとそのリストへ移る', async ({ page }) => {
+test('リストタブにリストごとの件数・期限切れの数・今日の完了数が出て、押すとそのリストへ移る', async ({ page }) => {
   await openApp(page);
   for (const [list, text] of [['chores', '掃除A'], ['chores', '掃除B'], ['books', '本A'], ['todo', '用事A']]) {
     await page.goto('#/list/' + list);
@@ -143,7 +146,7 @@ test('ホーム下部にリストごとの件数・期限切れの数・今日�
   await page.goto('#/list/todo');
   await page.locator('.row', { hasText: '用事A' }).locator('.check').click();
 
-  await page.goto('#/');
+  await page.goto('#/overview');
   const tile = name => page.locator('.tile', { has: page.locator('.name', { hasText: name }) });
   await expect(tile('家事').locator('.num')).toHaveText('2期限切れ1');
   await expect(tile('ためておく').locator('.num')).toHaveText('1');

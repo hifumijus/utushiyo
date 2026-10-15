@@ -122,7 +122,7 @@ test.describe('期限', () => {
       await page.locator('#edit-due').fill(due);
       await save(page);
     }
-    await page.goto('#/');
+    await page.goto('#/focus');
     const title = page.locator('.focus-title');
     await expect(page.locator('.focus-meta')).toContainText('残り 3 件'); // 来週の家事は入らない
     await expect(title).toHaveText('期限切れの本');
@@ -154,7 +154,7 @@ test.describe('見込み時間とタイマー', () => {
       await page.locator(`#edit-dialog .est-picker [data-set="${est}"]`).click();
       await save(page);
     }
-    await page.goto('#/');
+    await page.goto('#/focus');
     await expect(page.locator('.focus-title')).toHaveText(text);
   }
 
@@ -202,7 +202,7 @@ test.describe('見込み時間とタイマー', () => {
     await page.goto('#/list/today');
     await page.locator('.row', { hasText: '計測する項目' }).locator('.row-body').click();
     await page.locator('#edit-cancel').click();
-    await page.goto('#/');
+    await page.goto('#/focus');
     await expect(page.locator('.focus-title')).toHaveText('先の項目');
     await page.locator('.focus-card [data-action=later]').click();
     await expect(page.locator('.focus-title')).toHaveText('計測する項目');
@@ -218,7 +218,7 @@ test.describe('見込み時間とタイマー', () => {
     await openApp(page);
     await addTo(page, 'today', 'X');
     await addTo(page, 'today', 'Y');
-    await page.goto('#/');
+    await page.goto('#/focus');
     const first = await page.locator('.focus-title').textContent();
     await page.locator('.focus-card [data-action=start]').click();
     await page.clock.runFor(4 * 60 * 1000);
@@ -236,7 +236,7 @@ test.describe('見込み時間とタイマー', () => {
       await page.locator('#edit-est').fill('10');
       await save(page);
     }
-    await page.goto('#/');
+    await page.goto('#/focus');
     const first = await page.locator('.focus-title').textContent();
     const second = first === 'P' ? 'Q' : 'P';
     await page.locator('.focus-card [data-action=start]').click();
