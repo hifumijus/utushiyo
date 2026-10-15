@@ -202,6 +202,8 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 .search-panel { display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; }
 .search-panel .picker-label { margin-top: 4px; }
 .chip small { color: var(--muted); font-weight: 400; margin-left: 2px; }
+.filter-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px;
+  padding: 6px 6px 6px 12px; border-radius: 12px; background: var(--accent-soft); color: var(--text); font-size: 13px; font-weight: 600; }
 .search-summary { margin-left: 8px; color: var(--accent); font-weight: 600; }
 .row-start { flex: none; align-self: center; margin-right: 10px; min-height: 36px; padding: 0 12px; border-radius: 10px;
   border: 1px solid var(--accent); background: var(--surface); color: var(--accent); font-weight: 600; font-size: 14px; }
@@ -462,7 +464,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 /* =========================================================
  * 定数
  * ======================================================= */
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 const SCHEMA_VERSION = 1;
 const DB_NAME = 'nagekomi';
 const DB_VERSION = 1;
@@ -800,6 +802,32 @@ function openItemsOf(list) {
 }
 // 1件表示の順番: 計測中 → 期限切れ・今日まで(どのリストでも) → 今日やる(+後回しにした期限の迫った項目) → やること
 function focusQueue() {
+  const f = focusFilter();
+  return f ? filteredQueue(f) : normalQueue();
+}
+// 絞り込み(「この条件で1件ずつ片付ける」)。条件と、後回しにした順を端末に保存する
+function focusFilter() {
+  try {
+    const o = JSON.parse(localStorage.getItem('focusFilter') || 'null');
+    return o && o.cond ? { cond: { ...DEFAULT_SEARCH, ...o.cond }, skipped: Array.isArray(o.skipped) ? o.skipped : [] } : null;
+  } catch { return null; }
+}
+function setFocusFilter(o) {
+  try { if (o) localStorage.setItem('focusFilter', JSON.stringify(o)); else localStorage.removeItem('focusFilter'); } catch { /* 保存できなくても続ける */ }
+}
+// 計測中 → 条件に当てはまる項目(条件で探すと同じ並び) → 後回しにした項目(後回しにした順)
+function filteredQueue(f) {
+  const running = visibleItems().filter(isRunning);
+  const results = searchItems(f.cond);
+  const hit = new Set(results.map(i => i.id));
+  const fresh = results.filter(i => !f.skipped.includes(i.id));
+  const back = f.skipped.filter(id => hit.has(id)).map(id => state.items.get(id));
+  return [...running, ...fresh, ...back];
+}
+function condSummary(c) {
+  return [c.min ? `${c.min}分以内` : '', ...c.tags, c.includeStock ? 'ためておくも含む' : ''].filter(Boolean).join('・');
+}
+function normalQueue() {
   const open = visibleItems().filter(i => i.status === 'open');
   const today = todayStr();
   const skipped = laterToday();
@@ -907,7 +935,7 @@ function focusCardHtml(head, queueLength) {
 }
 function searchHtml() {
   const c = searchCond;
-  const summary = [c.min ? `${c.min}分以内` : '', ...c.tags].filter(Boolean).join('・');
+  const summary = condSummary(c);
   let body = '';
   if (searchOpen) {
     const results = searchItems(c);
@@ -933,6 +961,7 @@ function searchHtml() {
         <label class="split-toggle"><input type="checkbox" data-action="search-stock"${c.includeStock ? ' checked' : ''}> ためておくリスト(本・映画など)も含める</label>
       </div>
       <h2 class="section-title" style="margin-top:8px">当てはまる項目(${results.length})</h2>
+      ${results.length ? '<button type="button" class="btn btn-primary btn-block" data-action="focus-filter-on" style="margin-bottom:8px">この条件で1件ずつ片付ける</button>' : ''}
       ${results.length ? `<ul class="rows">${shown.map(i => rowHtml(i, { showList: true, startBtn: true })).join('')}</ul>` : '<p class="empty">条件に当てはまる項目はありません。</p>'}
       ${results.length > shown.length ? `<button type="button" class="toggle-done" data-action="search-all">残り ${results.length - shown.length} 件も表示</button>` : ''}
       <p class="gap-hint">期限の近い順に並べています。「仕事へ転記」と計測中の項目は除いています。${noEst ? `見込み時間が未登録の項目(${noEst} 件)は、時間を指定すると対象外になります。` : ''}</p>`;
@@ -965,8 +994,14 @@ function renderHome() {
   const queue = focusQueue();
   const today = openItemsOf('today');
   const head = queue[0];
+  const filter = focusFilter();
+  const filterBar = filter ? `<div class="filter-bar"><span>絞り込み中: ${esc(condSummary(filter.cond) || '条件なし')}</span>
+      <button type="button" class="mini-btn" data-action="focus-filter-off">解除</button></div>` : '';
   const focus = head
     ? focusCardHtml(head, queue.length)
+    : filter
+    ? `<div class="focus-card"><p class="empty">条件に当てはまる項目は残っていません。</p>
+        <button type="button" class="btn" data-action="focus-filter-off">絞り込みを解除</button></div>`
     : `<div class="focus-card"><p class="empty">「${esc(listName('today'))}」「${esc(listName('todo'))}」は空です。<br>インボックスの項目を振り分けると、ここに1件ずつ表示されます。</p></div>`;
 
   $('#home-dynamic').innerHTML = `
@@ -976,6 +1011,7 @@ function renderHome() {
     </a>
     ${inboxCount || organizeState() ? organizeBtnHtml() : ''}
     <h2 class="section-title">1件表示</h2>
+    ${filterBar}
     ${focus}
     ${searchHtml()}
     <h2 class="section-title">${esc(listName('today'))}(${today.length})</h2>
@@ -1375,6 +1411,14 @@ async function later(id) {
   // 項目の中身は変えず、updated_at を同じリストのどの項目よりも新しくして、表示順の最後へ回す。計測中なら一時停止する
   const it = state.items.get(id);
   if (!it) return;
+  const f = focusFilter();
+  if (f) {
+    // 絞り込み中は、条件の中での順番を後ろへ回すだけ(データは書き換えない。計測中なら一時停止)
+    setFocusFilter({ ...f, skipped: [...f.skipped.filter(x => x !== id), id] });
+    if (it.timer_started_at) await updateItem(id, pauseChanges(it)); else render();
+    showToast(it.timer_started_at ? '一時停止して後回しにしました' : '後回しにしました');
+    return;
+  }
   const d = dueDate(it);
   if (d && d <= todayStr()) addLaterToday(id);
   const peers = [...openItemsOf(it.list), ...focusQueue()].filter(i => i.id !== id);
@@ -1503,6 +1547,12 @@ function bindEvents() {
       }
       case 'search-stock': searchCond = { ...searchCond, includeStock: btn.checked }; saveSearch(searchCond); render(); break;
       case 'search-all': searchShowAll = true; render(); break;
+      case 'focus-filter-on':
+        setFocusFilter({ cond: { ...searchCond, tags: [...searchCond.tags] }, skipped: [] });
+        searchOpen = false; render(); window.scrollTo(0, 0);
+        showToast('この条件で1件ずつ表示します');
+        break;
+      case 'focus-filter-off': setFocusFilter(null); render(); showToast('絞り込みを解除しました'); break;
       case 'edit': if (id) openEditor(id); break;
       case 'toggle-list-done':
         if (listShowDone.has(route.arg)) listShowDone.delete(route.arg); else listShowDone.add(route.arg);
