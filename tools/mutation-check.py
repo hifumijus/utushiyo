@@ -20,6 +20,9 @@ M = [
  ("保存: IndexedDB に書かない", "index.html", "for (const it of items) s.put(it);\n      tx.objectStore('meta').put(pendingCopy, 'pending');\n    });\n  } catch", "tx.objectStore('meta').put(pendingCopy, 'pending');\n    });\n  } catch", "capture"),
  ("?add=: URL から消さない", "index.html", "history.replaceState(null, '', url.pathname + (url.search || '') + url.hash);", "", "capture"),
  ("ホーム: ためておくリストも出す", "index.html", "const today = openItemsOf('today');", "const today = [...openItemsOf('today'), ...openItemsOf('movies')];", "items"),
+ ("まとめて追加: 行に分けない", "index.html", "const texts = split ? splitLines(text) : (text.trim() ? [text] : []);", "const texts = text.trim() ? [text] : [];", "capture"),
+ ("まとめて追加: 順番を保たない", "index.html", "formatTime(now - (texts.length - 1 - i) * 1000)", "formatTime(now)", "capture"),
+ ("まとめて追加: 箇条書きの印を残す", "index.html", ", '').trim())", ", '$&').trim())", "capture"),
  ("オフライン: キャッシュを使わない", "sw.js", "if (cached) {", "if (false) {", "offline"),
  ("トークン: 設定画面に表示してしまう", "index.html", "$('#set-token').value = '';", "$('#set-token').value = state.token;", "sync"),
 ]
