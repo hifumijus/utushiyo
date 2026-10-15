@@ -199,6 +199,10 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 .gap-head { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 44px; margin-top: 16px;
   padding: 0 4px; border: 0; background: none; font-size: 12px; font-weight: 600; color: var(--muted); }
 .gap-hint { font-size: 12px; color: var(--muted); margin: 8px 4px 0; }
+.search-panel { display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; }
+.search-panel .picker-label { margin-top: 4px; }
+.chip small { color: var(--muted); font-weight: 400; margin-left: 2px; }
+.search-summary { margin-left: 8px; color: var(--accent); font-weight: 600; }
 .row-start { flex: none; align-self: center; margin-right: 10px; min-height: 36px; padding: 0 12px; border-radius: 10px;
   border: 1px solid var(--accent); background: var(--surface); color: var(--accent); font-weight: 600; font-size: 14px; }
 
@@ -458,7 +462,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 /* =========================================================
  * 定数
  * ======================================================= */
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 const SCHEMA_VERSION = 1;
 const DB_NAME = 'nagekomi';
 const DB_VERSION = 1;
@@ -811,14 +815,21 @@ function focusQueue() {
   const rotation = open.filter(i => !seen.has(i.id) && (i.list === 'today' || urgentDue(i))).sort(byUpdated);
   return [...running, ...urgent, ...rotation, ...todo];
 }
-// すきま時間の提案: 見込み時間が min 分以内の項目を、期限の近い順 → 時間を使い切れる順に
+// 条件で探す: 見込み時間(min 分以内)・タグ(どれかが付いている)・ためておくリストを含めるか、で絞り込む。
+// 「仕事へ転記」と計測中の項目は除く。並びは 期限の近い順 → (時間指定ありなら)時間を使い切れる順 / (なしなら)短い順
 const LIST_RANK = ['today', 'todo', 'chores', 'shopping', 'someday', 'inbox'];
-function gapSuggestions(min) {
+function searchItems(cond) {
   const rank = i => { const d = dueInfo(i); return d ? { overdue: 0, today: 1, week: 2, later: 3 }[d.cls] : 4; };
   const lr = i => { const r = LIST_RANK.indexOf(i.list); return r < 0 ? LIST_RANK.length : r; };
+  const stockIds = new Set(activeLists().filter(l => l.stock).map(l => l.id));
+  const tags = cond.tags || [];
+  const byEst = cond.min ? (a, b) => estimateOf(b) - estimateOf(a) : (a, b) => (estimateOf(a) || 9999) - (estimateOf(b) || 9999);
   return visibleItems()
-    .filter(i => i.status === 'open' && !isRunning(i) && i.list !== 'work' && estimateOf(i) && estimateOf(i) <= min)
-    .sort((a, b) => rank(a) - rank(b) || estimateOf(b) - estimateOf(a) || lr(a) - lr(b) || parseTime(a.created_at) - parseTime(b.created_at));
+    .filter(i => i.status === 'open' && !isRunning(i) && i.list !== 'work')
+    .filter(i => cond.includeStock || !stockIds.has(i.list))
+    .filter(i => !cond.min || (estimateOf(i) && estimateOf(i) <= cond.min))
+    .filter(i => !tags.length || (Array.isArray(i.tags) && i.tags.some(t => tags.includes(t))))
+    .sort((a, b) => rank(a) - rank(b) || byEst(a, b) || lr(a) - lr(b) || parseTime(a.created_at) - parseTime(b.created_at));
 }
 function closedItems() {
   return visibleItems().filter(i => i.status !== 'open')
@@ -860,8 +871,16 @@ function rowHtml(it, { showList = false, startBtn = false } = {}) {
   </li>`;
 }
 
-let gapOpen = false;
-let gapMin = 15;
+let searchOpen = false;
+let searchShowAll = false;
+const DEFAULT_SEARCH = { min: null, tags: [], includeStock: false };
+function loadSearch() {
+  try { return { ...DEFAULT_SEARCH, ...JSON.parse(localStorage.getItem('searchCond') || '{}') }; } catch { return { ...DEFAULT_SEARCH }; }
+}
+function saveSearch(cond) {
+  try { localStorage.setItem('searchCond', JSON.stringify(cond)); } catch { /* 覚えられなくても探すことはできる */ }
+}
+let searchCond = loadSearch();
 function focusCardHtml(head, queueLength) {
   const note = [restLines(head.text), head.note].filter(Boolean).join('\n');
   const running = isRunning(head);
@@ -886,18 +905,40 @@ function focusCardHtml(head, queueLength) {
       </div>
     </div>`;
 }
-function gapHtml() {
+function searchHtml() {
+  const c = searchCond;
+  const summary = [c.min ? `${c.min}分以内` : '', ...c.tags].filter(Boolean).join('・');
   let body = '';
-  if (gapOpen) {
-    const all = gapSuggestions(gapMin);
-    const noEst = visibleItems().filter(i => i.status === 'open' && i.list !== 'work' && !estimateOf(i)).length;
-    body = `<div class="chips" style="margin:4px 0 10px">${[5, 15, 30, 60].map(m =>
-        `<button type="button" class="chip${m === gapMin ? ' on' : ''}" data-action="gap" data-min="${m}">${m}分</button>`).join('')}</div>
-      ${all.length ? `<ul class="rows">${all.slice(0, 8).map(i => rowHtml(i, { showList: true, startBtn: true })).join('')}</ul>`
-        : `<p class="empty">${gapMin}分以内で終わる項目はありません。</p>`}
-      <p class="gap-hint">見込み時間が登録されている項目から、期限の近い順に提案します。${all.length > 8 ? `ほかに ${all.length - 8} 件あります。` : ''}${noEst ? `見込み時間が未登録の項目(${noEst} 件)は対象外です。` : ''}</p>`;
+  if (searchOpen) {
+    const results = searchItems(c);
+    const shown = searchShowAll ? results : results.slice(0, 10);
+    // 選べるタグ: 探す対象の未完了の項目に付いているもの(選択中のものは件数 0 でも残す)
+    const stockIds = new Set(activeLists().filter(l => l.stock).map(l => l.id));
+    const tagCount = new Map();
+    for (const i of visibleItems()) {
+      if (i.status !== 'open' || i.list === 'work' || (!c.includeStock && stockIds.has(i.list))) continue;
+      for (const t of new Set(Array.isArray(i.tags) ? i.tags : [])) tagCount.set(t, (tagCount.get(t) || 0) + 1);
+    }
+    for (const t of c.tags) if (!tagCount.has(t)) tagCount.set(t, 0);
+    const tags = [...tagCount.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ja'));
+    const noEst = c.min ? visibleItems().filter(i => i.status === 'open' && i.list !== 'work' && !estimateOf(i)
+      && (c.includeStock || !stockIds.has(i.list))).length : 0;
+    body = `<div class="search-panel">
+        <div class="picker-label">時間</div>
+        <div class="chips">${[null, 5, 15, 30, 60].map(m =>
+          `<button type="button" class="chip${c.min === m ? ' on' : ''}" data-action="search-min" data-min="${m || ''}">${m ? m + '分以内' : '指定なし'}</button>`).join('')}</div>
+        <div class="picker-label">タグ(どれかが付いているもの)</div>
+        <div class="chips">${tags.map(([t, n]) =>
+          `<button type="button" class="chip${c.tags.includes(t) ? ' on' : ''}" data-action="search-tag" data-tag="${esc(t)}">${esc(t)} <small>${n}</small></button>`).join('') || '<span class="gap-hint" style="margin:0">タグの付いた項目がありません</span>'}</div>
+        <label class="split-toggle"><input type="checkbox" data-action="search-stock"${c.includeStock ? ' checked' : ''}> ためておくリスト(本・映画など)も含める</label>
+      </div>
+      <h2 class="section-title" style="margin-top:8px">当てはまる項目(${results.length})</h2>
+      ${results.length ? `<ul class="rows">${shown.map(i => rowHtml(i, { showList: true, startBtn: true })).join('')}</ul>` : '<p class="empty">条件に当てはまる項目はありません。</p>'}
+      ${results.length > shown.length ? `<button type="button" class="toggle-done" data-action="search-all">残り ${results.length - shown.length} 件も表示</button>` : ''}
+      <p class="gap-hint">期限の近い順に並べています。「仕事へ転記」と計測中の項目は除いています。${noEst ? `見込み時間が未登録の項目(${noEst} 件)は、時間を指定すると対象外になります。` : ''}</p>`;
   }
-  return `<button type="button" class="gap-head" data-action="toggle-gap" aria-expanded="${gapOpen}"><span>すきま時間で探す</span><span>${gapOpen ? '▴' : '▾'}</span></button>${body}`;
+  return `<button type="button" class="gap-head" data-action="toggle-search" aria-expanded="${searchOpen}">
+      <span>条件で探す${summary ? `<small class="search-summary">${esc(summary)}</small>` : ''}</span><span>${searchOpen ? '▴' : '▾'}</span></button>${body}`;
 }
 // ホーム下部: 各リストの件数(期限切れがあれば赤で併記)。押すとそのリストへ
 function tilesHtml() {
@@ -936,7 +977,7 @@ function renderHome() {
     ${inboxCount || organizeState() ? organizeBtnHtml() : ''}
     <h2 class="section-title">1件表示</h2>
     ${focus}
-    ${gapHtml()}
+    ${searchHtml()}
     <h2 class="section-title">${esc(listName('today'))}(${today.length})</h2>
     ${today.length ? `<ul class="rows">${today.map(i => rowHtml(i)).join('')}</ul>` : `<p class="empty">「${esc(listName('today'))}」の項目はありません。</p>`}
     <h2 class="section-title">リスト</h2>
@@ -1453,8 +1494,15 @@ function bindEvents() {
       case 'later': if (id) later(id); break;
       case 'start': if (id) startTimer(id); break;
       case 'pause': if (id) pauseTimer(id); break;
-      case 'toggle-gap': gapOpen = !gapOpen; render(); break;
-      case 'gap': gapMin = Number(btn.dataset.min) || 15; render(); break;
+      case 'toggle-search': searchOpen = !searchOpen; searchShowAll = false; render(); break;
+      case 'search-min': searchCond = { ...searchCond, min: Number(btn.dataset.min) || null }; saveSearch(searchCond); searchShowAll = false; render(); break;
+      case 'search-tag': {
+        const t = btn.dataset.tag;
+        const tags = searchCond.tags.includes(t) ? searchCond.tags.filter(x => x !== t) : [...searchCond.tags, t];
+        searchCond = { ...searchCond, tags }; saveSearch(searchCond); searchShowAll = false; render(); break;
+      }
+      case 'search-stock': searchCond = { ...searchCond, includeStock: btn.checked }; saveSearch(searchCond); render(); break;
+      case 'search-all': searchShowAll = true; render(); break;
       case 'edit': if (id) openEditor(id); break;
       case 'toggle-list-done':
         if (listShowDone.has(route.arg)) listShowDone.delete(route.arg); else listShowDone.add(route.arg);
