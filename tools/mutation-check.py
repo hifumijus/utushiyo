@@ -48,6 +48,9 @@ M = [
  ("リスト: ほかの端末の変更を取り込まない", "index.html", "else if (parseTime(l.updated_at) > parseTime(state.lists[i].updated_at)) { state.lists[i] = l; listsChanged = true; }", "", "lists"),
  ("リスト: 並べ替えが効かない", "index.html", "await saveLists([changedList(cur, { order: other.order }), changedList(other, { order: cur.order })]);", "", "lists"),
  ("リスト: 定義が無いときも書き込む", "index.html", "? DEFAULT_LISTS.map(l => ({ ...l }))\n", "? []\n", "lists"),
+ ("タグ: 完了済みも数える", "index.html", "    if (i.status !== 'open') continue;\n", "", "tags"),
+ ("タグ: 押しても移らない", "index.html", "      case 'tag': if (btn.dataset.tag) go('#/tag/' + encodeURIComponent(btn.dataset.tag)); break;\n", "", "tags"),
+ ("タグ: ほかのタグの項目も出す", "index.html", "i.status === 'open' && Array.isArray(i.tags) && i.tags.includes(tag)", "i.status === 'open'", "tags"),
  ("オフライン: キャッシュを使わない", "sw.js", "if (cached) {", "if (false) {", "offline"),
  ("トークン: 設定画面に表示してしまう", "index.html", "$('#set-token').value = '';", "$('#set-token').value = state.token;", "sync"),
 ]

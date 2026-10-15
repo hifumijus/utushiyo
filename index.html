@@ -218,7 +218,8 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 .row-title { word-break: break-word; }
 .row.done .row-title { color: var(--muted); text-decoration: line-through; }
 .row-meta { font-size: 11px; color: var(--muted); margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
-.tag { background: var(--surface-2); border-radius: 6px; padding: 0 6px; }
+.tag { background: var(--surface-2); border-radius: 6px; padding: 2px 7px; cursor: pointer; }
+.tag:active { background: var(--accent-soft); }
 .toggle-done { display: block; margin: 12px auto 0; background: none; border: 0; color: var(--muted); font-size: 14px; min-height: 44px; padding: 0 12px; }
 
 /* メニュー */
@@ -328,6 +329,9 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 
   <!-- メニュー -->
   <section class="view" id="view-menu" hidden></section>
+
+  <!-- タグでまとめて見る -->
+  <section class="view" id="view-tag" hidden></section>
 
   <!-- リストの編集 -->
   <section class="view" id="view-lists" hidden>
@@ -454,7 +458,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 /* =========================================================
  * 定数
  * ======================================================= */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 const SCHEMA_VERSION = 1;
 const DB_NAME = 'nagekomi';
 const DB_VERSION = 1;
@@ -844,7 +848,7 @@ function rowHtml(it, { showList = false, startBtn = false } = {}) {
   const est = estimateOf(it), spent = elapsedSec(it);
   if (done && spent > 0) meta.push(`実際 ${esc(fmtSpent(spent))}${est ? `(目安 ${esc(fmtMin(est))})` : ''}`);
   else if (est) meta.push(`目安 ${esc(fmtMin(est))}`);
-  for (const t of (Array.isArray(it.tags) ? it.tags : [])) meta.push(`<span class="tag">${esc(t)}</span>`);
+  for (const t of (Array.isArray(it.tags) ? it.tags : [])) meta.push(`<span class="tag" data-action="tag" data-tag="${esc(t)}">${esc(t)}</span>`);
   if (it.note) meta.push('メモあり');
   return `<li class="row${done ? ' done' : ''}" data-id="${esc(it.id)}">
     <button type="button" class="check${done ? ' is-done' : ''}" data-action="${done ? 'reopen' : 'done'}" aria-label="${done ? '未完了に戻す' : '完了にする'}"></button>
@@ -956,16 +960,43 @@ function renderList(id) {
   `;
 }
 
+// 未完了の項目に付いているタグと件数(件数の多い順)
+function tagCounts() {
+  const m = new Map();
+  for (const i of visibleItems()) {
+    if (i.status !== 'open') continue;
+    for (const t of new Set(Array.isArray(i.tags) ? i.tags : [])) m.set(t, (m.get(t) || 0) + 1);
+  }
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ja'));
+}
+function renderTag(tag) {
+  const items = visibleItems().filter(i => i.status === 'open' && Array.isArray(i.tags) && i.tags.includes(tag));
+  const groups = [...activeLists().map(l => l.id), ...unknownListIds()]
+    .map(id => ({ id, arr: items.filter(i => i.list === id) }))
+    .filter(g => g.arr.length);
+  const sortIn = arr => arr.sort((a, b) => {
+    const da = dueDate(a) || '9999', db = dueDate(b) || '9999';
+    return da.localeCompare(db) || (estimateOf(a) || 999) - (estimateOf(b) || 999) || parseTime(a.created_at) - parseTime(b.created_at);
+  });
+  $('#view-tag').innerHTML = `
+    <p class="lists-note" style="margin-top:8px">「${esc(tag)}」の付いた未完了の項目 ${items.length} 件(リストごと、期限の近い順)</p>
+    ${groups.map(g => `<h2 class="section-title">${esc(listName(g.id))}(${g.arr.length})</h2>
+      <ul class="rows">${sortIn(g.arr).map(i => rowHtml(i)).join('')}</ul>`).join('') || '<p class="empty">項目はありません。</p>'}`;
+}
+
 function renderMenu() {
   const count = id => openItemsOf(id).length;
   const link = (id, name) => `<li><a href="#/list/${encodeURIComponent(id)}" data-nav><span>${esc(name)}</span><span class="n">${count(id)} ›</span></a></li>`;
   const unknown = unknownListIds();
+  const tags = tagCounts();
   $('#view-menu').innerHTML = `
     <h2 class="section-title" style="margin-top:8px">リスト</h2>
     <ul class="menu-list">${activeLists().filter(l => !l.stock).map(l => link(l.id, l.name)).join('')}</ul>
     <h2 class="section-title">ためておくリスト</h2>
     <ul class="menu-list">${activeLists().filter(l => l.stock).map(l => link(l.id, l.name)).join('') || '<li class="empty">ありません</li>'}</ul>
     ${unknown.length ? `<h2 class="section-title">その他のリスト</h2><ul class="menu-list">${unknown.map(id => link(id, id)).join('')}</ul>` : ''}
+    ${tags.length ? `<h2 class="section-title">タグ</h2><ul class="menu-list">${tags.map(([t, n]) =>
+      `<li><a href="#/tag/${encodeURIComponent(t)}" data-nav><span>${esc(t)}</span><span class="n">${n} ›</span></a></li>`).join('')}</ul>` : ''}
     <h2 class="section-title">その他</h2>
     <ul class="menu-list">
       <li><a href="#/lists" data-nav><span>リストの追加・編集</span><span class="n">›</span></a></li>
@@ -1114,6 +1145,7 @@ function render() {
     case 'done': renderDone(); break;
     case 'settings': renderSettingsStatus(); break;
     case 'lists': renderListsEditor(); break;
+    case 'tag': renderTag(route.arg); break;
   }
 }
 
@@ -1125,15 +1157,16 @@ function parseRoute() {
   const parts = (location.hash.replace(/^#/, '') || '/').split('/').filter(Boolean);
   const view = parts[0] || 'home';
   if (view === 'list' && parts[1]) return { view: 'list', arg: decodeURIComponent(parts[1]) };
+  if (view === 'tag' && parts[1]) return { view: 'tag', arg: decodeURIComponent(parts.slice(1).join('/')) };
   if (['menu', 'done', 'settings', 'lists'].includes(view)) return { view, arg: null };
   return { view: 'home', arg: null };
 }
 function applyRoute() {
   const prev = route;
   route = parseRoute();
-  for (const v of ['home', 'list', 'menu', 'done', 'settings', 'lists']) $('#view-' + v).hidden = v !== route.view;
+  for (const v of ['home', 'list', 'menu', 'done', 'settings', 'lists', 'tag']) $('#view-' + v).hidden = v !== route.view;
   const titles = { home: '投げ込み', menu: 'メニュー', done: '完了済み', settings: '設定・同期', lists: 'リストの追加・編集' };
-  $('#title').textContent = route.view === 'list' ? listName(route.arg) : titles[route.view];
+  $('#title').textContent = route.view === 'list' ? listName(route.arg) : route.view === 'tag' ? `タグ: ${route.arg}` : titles[route.view];
   const nav = $('#nav-btn');
   if (route.view === 'home') { nav.textContent = '☰'; nav.setAttribute('aria-label', 'メニュー'); }
   else { nav.textContent = '‹'; nav.setAttribute('aria-label', '戻る'); }
@@ -1428,6 +1461,7 @@ function bindEvents() {
         render(); break;
       case 'sync-now': syncNow(true); break;
       case 'organize': requestOrganize(); break;
+      case 'tag': if (btn.dataset.tag) go('#/tag/' + encodeURIComponent(btn.dataset.tag)); break;
       case 'list-up': case 'list-down': case 'list-edit': {
         const lid = btn.closest('[data-list]') && btn.closest('[data-list]').dataset.list;
         if (!lid) break;
