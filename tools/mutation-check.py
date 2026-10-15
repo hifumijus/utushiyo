@@ -35,6 +35,12 @@ M = [
  ("まとめて追加: 行に分けない", "index.html", "const texts = split ? splitLines(text) : (text.trim() ? [text] : []);", "const texts = text.trim() ? [text] : [];", "capture"),
  ("まとめて追加: 順番を保たない", "index.html", "formatTime(now - (texts.length - 1 - i) * 1000)", "formatTime(now)", "capture"),
  ("まとめて追加: 箇条書きの印を残す", "index.html", ", '').trim())", ", '$&').trim())", "capture"),
+ ("整理: 未送信を送らずに起動する", "index.html", "    await waitForSync(); // 端末で投げ込んだ分を先に GitHub へ送る\n", "", "organize"),
+ ("整理: 以前の実行を今回とみなす", "index.html", ".filter(r => r.id > st.baseline)", ".filter(r => r.id >= st.baseline)", "organize"),
+ ("整理: 終わっても結果を取り込まない", "index.html", "        await waitForSync();\n        showToast('整理が終わりました');", "        showToast('整理が終わりました');", "organize"),
+ ("整理: 依頼中の状態を覚えない", "index.html", "if (o) localStorage.setItem('organize', JSON.stringify(o)); else", "if (false) localStorage.setItem('organize', JSON.stringify(o)); else", "organize"),
+ ("整理: 失敗を成功扱いする", "index.html", "if (run.conclusion === 'success') {", "if (true) {", "organize"),
+ ("ホーム: リストの件数を出さない", "index.html", "    ${tilesHtml()}\n", "", "items"),
  ("オフライン: キャッシュを使わない", "sw.js", "if (cached) {", "if (false) {", "offline"),
  ("トークン: 設定画面に表示してしまう", "index.html", "$('#set-token').value = '';", "$('#set-token').value = state.token;", "sync"),
 ]

@@ -21,6 +21,10 @@ class FakeGitHub {
     this.requests = [];     // { method, path, body }
     this.putCount = 0;
     this.conflictsToInject = 0; // 次の PUT を何回 409 にするか(別端末が先に書いた状況)
+    // GitHub Actions(整理の仕組み)
+    this.workflowExists = true;
+    this.runs = [{ id: 100, status: 'completed', conclusion: 'success' }]; // 以前の実行
+    this.dispatches = [];
   }
 
   setDoc(doc) {
@@ -28,6 +32,9 @@ class FakeGitHub {
   }
   doc() {
     return this.file ? JSON.parse(this.file.text) : null;
+  }
+  latestRun() {
+    return [...this.runs].sort((a, b) => b.id - a.id)[0];
   }
   item(predicate) {
     return this.doc().items.find(predicate);
@@ -53,6 +60,23 @@ class FakeGitHub {
     if (!url.pathname.startsWith(repoPath) || !this.repoExists) return json(404, { message: 'Not Found', status: '404' });
 
     if (url.pathname === repoPath && method === 'GET') return json(200, { full_name: `${OWNER}/${REPO}`, private: true });
+
+    const wf = `${repoPath}/actions/workflows/organize.yml`;
+    if (url.pathname.startsWith(wf)) {
+      if (!this.workflowExists) return json(404, { message: 'Not Found', status: '404' });
+      if (token === READONLY_TOKEN) return json(403, { message: 'Resource not accessible by personal access token', status: '403' });
+      if (url.pathname === `${wf}/dispatches` && method === 'POST') {
+        this.dispatches.push(body);
+        const id = Math.max(0, ...this.runs.map(r => r.id)) + 1;
+        this.runs.push({ id, status: 'queued', conclusion: null });
+        return route.fulfill({ status: 204, body: '' });
+      }
+      if (url.pathname === `${wf}/runs` && method === 'GET') {
+        const n = Number(url.searchParams.get('per_page') || 30);
+        const runs = [...this.runs].sort((a, b) => b.id - a.id).slice(0, n);
+        return json(200, { total_count: this.runs.length, workflow_runs: runs });
+      }
+    }
 
     if (url.pathname === `${repoPath}/contents/items.json`) {
       if (method === 'GET') {

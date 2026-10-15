@@ -1,0 +1,57 @@
+# アプリの「Claude にインボックスの整理を頼む」ボタンから起動される。
+# Claude Code が CLAUDE.md のルールに従ってインボックスを振り分け、items.json をコミットする。
+# 事前に、リポジトリの Settings → Secrets and variables → Actions に
+# CLAUDE_CODE_OAUTH_TOKEN(`claude setup-token` で作る、Claude の契約に紐づく認証情報)を登録しておくこと。
+name: 整理
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: organize
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  organize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TZ: Asia/Tokyo
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: インボックスの件数を数える
+        id: inbox
+        run: |
+          n=$(python3 -c "import json; print(sum(1 for i in json.load(open('items.json'))['items'] if i.get('list') == 'inbox' and i.get('status', 'open') == 'open' and not i.get('deleted')))")
+          echo "インボックス: $n 件"
+          echo "count=$n" >> "$GITHUB_OUTPUT"
+
+      - name: コミットする名前を設定する
+        if: steps.inbox.outputs.count != '0'
+        run: |
+          git config --global user.name "claude-organize"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Claude Code で整理する
+        if: steps.inbox.outputs.count != '0'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            このリポジトリの CLAUDE.md のルールに従って、items.json のインボックスを整理してください。
+
+            - 対象は list が "inbox"、status が "open"、deleted が false の項目だけ。ほかの項目は変更しない
+            - 振り分け先・tags・due・estimate_min の付け方は CLAUDE.md のとおり。判断できないものは inbox に残す
+            - 現在時刻は `date -Iseconds` で取得する(日本時間になっている)。変更した項目の updated_at にはその時刻を入れる
+            - 書き換えたら `python3 -m json.tool items.json > /dev/null` で正しい JSON か確かめる
+            - 変更を要約したメッセージで items.json をコミットし、`git pull --rebase origin main` のあと `git push origin HEAD:main` する
+            - pull で items.json が衝突したら `git rebase --abort` と `git reset --hard origin/main` で最新を取り直し、最初からやり直す
+            - 最後に、何をどのリストへ振り分けたかを短く報告する
+          claude_args: |
+            --max-turns 40
+            --allowedTools "Read,Edit,Write,Bash(git:*),Bash(python3:*),Bash(date:*)"

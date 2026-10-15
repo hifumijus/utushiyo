@@ -58,7 +58,7 @@ body {
   color: var(--text);
   /* 国産の日本語フォントだけを指定する(メイリオ → ヒラギノ角ゴ → 游ゴシック) */
   font-family: "Meiryo", "メイリオ", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", "Yu Gothic", "YuGothic", "游ゴシック", sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.5;
   -webkit-tap-highlight-color: transparent;
 }
@@ -76,7 +76,7 @@ button { cursor: pointer; }
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
-.topbar h1 { margin: 0; font-size: 17px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar h1 { margin: 0; font-size: 16px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .icon-btn {
   width: 44px; height: 44px; border: 0; background: transparent; border-radius: 10px;
   display: grid; place-items: center; font-size: 22px; color: var(--text);
@@ -97,22 +97,22 @@ button { cursor: pointer; }
 
 main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bottom) + 96px); }
 .view[hidden] { display: none; }
-.section-title { margin: 24px 4px 8px; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+.section-title { margin: 20px 4px 6px; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
 
 /* 投げ込み欄 */
-.capture { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; }
+.capture { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; }
 .capture textarea {
-  display: block; width: 100%; min-height: 76px; max-height: 40vh; resize: none;
-  border: 0; outline: none; background: transparent; font-size: 17px; line-height: 1.5; padding: 4px 4px;
+  display: block; width: 100%; min-height: 48px; max-height: 40vh; resize: none;
+  border: 0; outline: none; background: transparent; font-size: 16px; line-height: 1.5; padding: 4px 4px;
 }
-.capture-actions { display: flex; justify-content: space-between; align-items: center; gap: 4px 8px; margin-top: 6px; flex-wrap: wrap; }
+.capture-actions { display: flex; justify-content: space-between; align-items: center; gap: 4px 8px; margin-top: 2px; flex-wrap: wrap; }
 .capture-actions .left { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; }
 .capture-actions > .btn { margin-left: auto; }
-.split-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding-left: 4px; font-size: 13px; color: var(--muted); }
+.split-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding-left: 2px; font-size: 12px; color: var(--muted); }
 .split-toggle input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
 .btn {
   min-height: 44px; padding: 0 18px; border-radius: 12px; border: 1px solid var(--line);
-  background: var(--surface); font-weight: 600; font-size: 16px;
+  background: var(--surface); font-weight: 600; font-size: 15px;
 }
 .btn:active { transform: scale(.98); }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
@@ -123,39 +123,39 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 /* インボックス件数 */
 .inbox-link {
   display: flex; align-items: center; justify-content: space-between; margin-top: 12px;
-  padding: 0 16px; min-height: 52px; border-radius: var(--radius);
+  padding: 0 14px; min-height: 46px; border-radius: var(--radius);
   background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: var(--text);
 }
-.inbox-link .count { font-weight: 700; font-size: 18px; }
-.inbox-link .count.zero { color: var(--muted); font-weight: 400; font-size: 15px; }
+.inbox-link .count { font-weight: 700; font-size: 16px; }
+.inbox-link .count.zero { color: var(--muted); font-weight: 400; font-size: 14px; }
 .chev { color: var(--muted); margin-left: 8px; }
 
 /* 1件表示 */
 .focus-card {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 16px; min-height: 150px; display: flex; flex-direction: column;
+  padding: 14px; min-height: 130px; display: flex; flex-direction: column;
 }
 .focus-meta { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
 .focus-title {
-  margin: 10px 0 6px; font-size: 21px; font-weight: 600; line-height: 1.4; word-break: break-word;
+  margin: 8px 0 4px; font-size: 18px; font-weight: 600; line-height: 1.4; word-break: break-word;
   background: none; border: 0; padding: 0; text-align: left;
 }
-.focus-note { color: var(--muted); font-size: 14px; white-space: pre-wrap; word-break: break-word; max-height: 4.5em; overflow: hidden; }
-.focus-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto; padding-top: 14px; }
+.focus-note { color: var(--muted); font-size: 13px; white-space: pre-wrap; word-break: break-word; max-height: 4.5em; overflow: hidden; }
+.focus-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; padding-top: 12px; }
 .focus-actions.three { grid-template-columns: 1fr 1fr 1fr; }
 .focus-actions.three .btn { padding: 0 4px; white-space: nowrap; }
-.focus-timer { margin: 4px 0 2px; font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
-.focus-timer small { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 8px; letter-spacing: 0; }
+.focus-timer { margin: 2px 0 2px; font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.focus-timer small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 8px; letter-spacing: 0; }
 .focus-timer.over { color: var(--warn); }
-.empty { color: var(--muted); font-size: 14px; text-align: center; padding: 24px 8px; }
+.empty { color: var(--muted); font-size: 13px; text-align: center; padding: 18px 8px; }
 
 /* 期限・見込み時間 */
 .due-overdue { color: var(--danger); font-weight: 600; }
 .due-today { color: var(--warn); font-weight: 600; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .chip {
-  min-height: 36px; padding: 0 12px; border-radius: 18px; border: 1px solid var(--line);
-  background: var(--surface); font-size: 14px; color: var(--text);
+  min-height: 34px; padding: 0 11px; border-radius: 17px; border: 1px solid var(--line);
+  background: var(--surface); font-size: 13px; color: var(--text);
 }
 .chip.on { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
 .chips input[type=date], .chips input[type=number] {
@@ -164,12 +164,30 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 }
 .chips input[type=number] { width: 5.5em; }
 .picker-label { font-size: 12px; color: var(--muted); margin: 0 2px 4px; }
-.opts-btn { min-height: 44px; padding: 0 8px; border: 0; background: none; color: var(--accent); font-size: 13px; text-align: left; }
+.opts-btn { min-height: 40px; padding: 0 6px; border: 0; background: none; color: var(--accent); font-size: 12px; text-align: left; }
 .capture-opts { border-top: 1px solid var(--line); margin-top: 6px; padding: 10px 2px 2px; display: grid; gap: 10px; }
+
+/* 整理の依頼 */
+.organize-btn {
+  width: 100%; min-height: 40px; margin-top: 6px; border-radius: 12px; border: 1px dashed var(--accent);
+  background: none; color: var(--accent); font-size: 13px; font-weight: 600;
+}
+.organize-btn:disabled { opacity: .7; border-style: solid; }
+
+/* リストの件数 */
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tile {
+  display: flex; flex-direction: column; justify-content: center; gap: 0; min-height: 52px; padding: 6px 10px;
+  border-radius: 12px; background: var(--surface); border: 1px solid var(--line); color: var(--text); text-decoration: none;
+}
+.tile .name { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .num { font-size: 17px; font-weight: 700; line-height: 1.3; }
+.tile .num.zero { color: var(--muted); font-weight: 400; }
+.tile .num small { font-size: 11px; font-weight: 600; margin-left: 6px; }
 
 /* すきま時間 */
 .gap-head { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 44px; margin-top: 16px;
-  padding: 0 4px; border: 0; background: none; font-size: 13px; font-weight: 600; color: var(--muted); }
+  padding: 0 4px; border: 0; background: none; font-size: 12px; font-weight: 600; color: var(--muted); }
 .gap-hint { font-size: 12px; color: var(--muted); margin: 8px 4px 0; }
 .row-start { flex: none; align-self: center; margin-right: 10px; min-height: 36px; padding: 0 12px; border-radius: 10px;
   border: 1px solid var(--accent); background: var(--surface); color: var(--accent); font-weight: 600; font-size: 14px; }
@@ -180,16 +198,16 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 .row { display: flex; align-items: flex-start; gap: 4px; border-top: 1px solid var(--line); }
 .row:first-child { border-top: 0; }
 .check {
-  flex: none; width: 48px; min-height: 52px; border: 0; background: transparent; display: grid; place-items: center;
+  flex: none; width: 44px; min-height: 46px; border: 0; background: transparent; display: grid; place-items: center;
 }
 .check::before {
-  content: ""; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); display: block;
+  content: ""; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--muted); display: block;
 }
 .check.is-done::before { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 3px var(--surface); }
-.row-body { flex: 1; min-width: 0; padding: 13px 14px 12px 0; border: 0; background: transparent; text-align: left; }
+.row-body { flex: 1; min-width: 0; padding: 11px 12px 10px 0; border: 0; background: transparent; text-align: left; }
 .row-title { word-break: break-word; }
 .row.done .row-title { color: var(--muted); text-decoration: line-through; }
-.row-meta { font-size: 12px; color: var(--muted); margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.row-meta { font-size: 11px; color: var(--muted); margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
 .tag { background: var(--surface-2); border-radius: 6px; padding: 0 6px; }
 .toggle-done { display: block; margin: 12px auto 0; background: none; border: 0; color: var(--muted); font-size: 14px; min-height: 44px; padding: 0 12px; }
 
@@ -197,10 +215,10 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 .menu-list { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .menu-list li + li { border-top: 1px solid var(--line); }
 .menu-list a {
-  display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 0 16px;
+  display: flex; align-items: center; justify-content: space-between; min-height: 46px; padding: 0 14px;
   color: var(--text); text-decoration: none;
 }
-.menu-list .n { color: var(--muted); font-size: 14px; }
+.menu-list .n { color: var(--muted); font-size: 13px; }
 
 /* フォーム */
 .field { display: block; margin-bottom: 14px; }
@@ -213,7 +231,7 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 .field small { display: block; font-size: 12px; color: var(--muted); margin: 6px 4px 0; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
 .card p { margin: 0 0 8px; }
-.status-line { font-size: 14px; color: var(--muted); }
+.status-line { font-size: 13px; color: var(--muted); }
 .status-line.err { color: var(--danger); white-space: pre-wrap; }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .btn-row .btn { flex: 1; }
@@ -259,7 +277,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   <!-- ホーム -->
   <section class="view" id="view-home">
     <form class="capture" id="capture-form" autocomplete="off">
-      <textarea id="capture-text" rows="3" aria-label="投げ込み欄" placeholder="思いついたことを書く(インボックスに入ります)" enterkeyhint="enter"></textarea>
+      <textarea id="capture-text" rows="2" aria-label="投げ込み欄" placeholder="思いついたことを書く" enterkeyhint="enter"></textarea>
       <div class="capture-actions">
         <div class="left">
           <label class="split-toggle"><input type="checkbox" class="split-check"> 1行ずつ別の項目にする</label>
@@ -389,7 +407,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 /* =========================================================
  * 定数
  * ======================================================= */
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const SCHEMA_VERSION = 1;
 const DB_NAME = 'nagekomi';
 const DB_VERSION = 1;
@@ -793,6 +811,26 @@ function gapHtml() {
   }
   return `<button type="button" class="gap-head" data-action="toggle-gap" aria-expanded="${gapOpen}"><span>すきま時間で探す</span><span>${gapOpen ? '▴' : '▾'}</span></button>${body}`;
 }
+// ホーム下部: 各リストの件数(期限切れがあれば赤で併記)。押すとそのリストへ
+function tilesHtml() {
+  const open = visibleItems().filter(i => i.status === 'open');
+  const today = todayStr();
+  const tile = (href, name, n, overdue = 0) => `<a class="tile" href="${href}" data-nav>
+      <span class="name">${esc(name)}</span>
+      <span class="num${n ? '' : ' zero'}">${n}${overdue ? `<small class="due-overdue">期限切れ${overdue}</small>` : ''}</span>
+    </a>`;
+  const of = ids => open.filter(i => ids.includes(i.list));
+  const overdueOf = arr => arr.filter(i => { const d = dueDate(i); return d && d < today; }).length;
+  const tiles = LISTS.filter(l => !l.stock && l.id !== 'inbox').map(l => {
+    const arr = of([l.id]);
+    return tile(`#/list/${l.id}`, l.name, arr.length, overdueOf(arr));
+  });
+  const stock = of(LISTS.filter(l => l.stock).map(l => l.id));
+  tiles.push(tile('#/menu', 'ためておく', stock.length, overdueOf(stock)));
+  const doneToday = visibleItems().filter(i => i.status === 'done' && i.done_at && dateStr(new Date(parseTime(i.done_at))) === today).length;
+  tiles.push(tile('#/done', '今日の完了', doneToday));
+  return `<div class="tiles">${tiles.join('')}</div>`;
+}
 function renderHome() {
   const inboxCount = openItemsOf('inbox').length;
   const queue = focusQueue();
@@ -807,11 +845,14 @@ function renderHome() {
       <span>インボックス</span>
       <span><span class="count${inboxCount ? '' : ' zero'}">${inboxCount ? inboxCount + ' 件' : '空です'}</span><span class="chev">›</span></span>
     </a>
+    ${inboxCount || organizeState() ? organizeBtnHtml() : ''}
     <h2 class="section-title">1件表示</h2>
     ${focus}
     ${gapHtml()}
     <h2 class="section-title">今日やる(${today.length})</h2>
     ${today.length ? `<ul class="rows">${today.map(i => rowHtml(i)).join('')}</ul>` : '<p class="empty">今日やることはありません。</p>'}
+    <h2 class="section-title">リスト</h2>
+    ${tilesHtml()}
   `;
 }
 
@@ -823,6 +864,7 @@ function renderList(id) {
   const showDone = listShowDone.has(id);
   $('#list-capture-text').placeholder = `「${listName(id)}」に追加`;
   $('#list-dynamic').innerHTML = `
+    ${id === 'inbox' ? organizeBtnHtml() : ''}
     <h2 class="section-title">${esc(listName(id))}(${items.length})</h2>
     ${items.length ? `<ul class="rows">${items.map(i => rowHtml(i)).join('')}</ul>` : '<p class="empty">項目はありません。</p>'}
     ${doneItems.length ? `<button type="button" class="toggle-done" data-action="toggle-list-done">${showDone ? '完了済みを隠す' : `完了済みを表示(${doneItems.length})`}</button>` : ''}
@@ -1217,6 +1259,7 @@ function bindEvents() {
         if (listShowDone.has(route.arg)) listShowDone.delete(route.arg); else listShowDone.add(route.arg);
         render(); break;
       case 'sync-now': syncNow(true); break;
+      case 'organize': requestOrganize(); break;
     }
   });
 
@@ -1506,6 +1549,110 @@ async function syncNow(manual) {
 }
 
 /* =========================================================
+ * Claude Code への整理の依頼
+ * データ用リポジトリの .github/workflows/organize.yml(GitHub Actions)を起動し、
+ * Claude Code が CLAUDE.md のルールでインボックスを振り分ける。終わったら同期して取り込む
+ * ======================================================= */
+const ORGANIZE_WORKFLOW = 'organize.yml';
+const ORGANIZE_TIMEOUT = 30 * 60 * 1000;
+let organizeTimer = null;
+let organizeRequesting = false;
+function workflowPath() {
+  return `${repoPath()}/actions/workflows/${ORGANIZE_WORKFLOW}`;
+}
+// 依頼中の状態(再読み込みしても続きを見守れるよう端末に保存)
+function organizeState() {
+  if (organizeRequesting) return { requesting: true };
+  try {
+    const o = JSON.parse(localStorage.getItem('organize') || 'null');
+    return o && Date.now() - o.at < ORGANIZE_TIMEOUT ? o : null;
+  } catch { return null; }
+}
+function setOrganizeState(o) {
+  try { if (o) localStorage.setItem('organize', JSON.stringify(o)); else localStorage.removeItem('organize'); } catch { /* 保存できなくても続ける */ }
+}
+function organizeBtnHtml() {
+  if (!syncConfigured()) return '';
+  const st = organizeState();
+  const label = !st ? 'Claude にインボックスの整理を頼む'
+    : st.requesting ? '整理を依頼しています…'
+    : `Claude が整理しています…(${Math.max(1, Math.round((Date.now() - st.at) / 60000))}分経過)`;
+  return `<button type="button" class="organize-btn" data-action="organize"${st ? ' disabled' : ''}>${esc(label)}</button>`;
+}
+async function organizeError(res) {
+  if (res.status === 404) return new SyncError('データ用リポジトリに整理の仕組み(.github/workflows/organize.yml)が見つかりません。');
+  if (res.status === 403) return new SyncError('アクセストークンに Actions の権限(Read and write)がありません。README の「整理ボタンの準備」を参照してください。');
+  return errorFrom(res, '整理の依頼');
+}
+async function latestRunId() {
+  const res = await gh(`${workflowPath()}/runs?per_page=1`);
+  if (!res.ok) throw await organizeError(res);
+  const runs = (await res.json()).workflow_runs || [];
+  return runs.length ? runs[0].id : 0;
+}
+async function waitForSync() {
+  while (state.syncing) await new Promise(r => setTimeout(r, 300));
+  await syncNow(false);
+}
+async function requestOrganize() {
+  if (!syncConfigured()) { showToast('GitHub との同期を設定すると使えます'); return; }
+  if (organizeState()) return;
+  if (!navigator.onLine) { showToast('オフラインのため依頼できません'); return; }
+  organizeRequesting = true;
+  render();
+  try {
+    await waitForSync(); // 端末で投げ込んだ分を先に GitHub へ送る
+    if (Object.keys(state.pending).length) throw new SyncError('未送信の変更を送れませんでした。同期の状態を確認してから、もう一度お試しください。');
+    const baseline = await latestRunId();
+    const res = await gh(`${workflowPath()}/dispatches`, { method: 'POST', body: JSON.stringify({ ref: state.settings.branch }) });
+    if (!res.ok) throw await organizeError(res);
+    organizeRequesting = false;
+    setOrganizeState({ baseline, at: Date.now() });
+    showToast('整理を依頼しました。数分かかります');
+    pollOrganize(15000);
+  } catch (e) {
+    organizeRequesting = false;
+    finishOrganize();
+    showToast(e && e.network ? '通信できませんでした。あとでもう一度お試しください。' : (e && e.message) || String(e));
+  }
+  render();
+}
+function pollOrganize(delay) {
+  clearTimeout(organizeTimer);
+  organizeTimer = setTimeout(checkOrganize, delay);
+}
+async function checkOrganize() {
+  const st = organizeState();
+  if (!st) { finishOrganize(); showToast('整理の結果を確認できませんでした。しばらくしてから同期してください'); return; }
+  if (st.requesting) return;
+  render(); // 経過時間の表示を更新
+  try {
+    const res = await gh(`${workflowPath()}/runs?per_page=5`);
+    if (!res.ok) throw await organizeError(res);
+    const runs = ((await res.json()).workflow_runs || []).filter(r => r.id > st.baseline).sort((a, b) => a.id - b.id);
+    const run = runs[0];
+    if (run && run.status === 'completed') {
+      finishOrganize();
+      if (run.conclusion === 'success') {
+        await waitForSync();
+        showToast('整理が終わりました');
+      } else {
+        showToast('整理に失敗しました。データ用リポジトリの Actions で記録を確認できます');
+      }
+      return;
+    }
+  } catch (e) {
+    if (!(e && e.network)) { finishOrganize(); showToast((e && e.message) || String(e)); return; }
+  }
+  pollOrganize(15000);
+}
+function finishOrganize() {
+  clearTimeout(organizeTimer);
+  setOrganizeState(null);
+  render();
+}
+
+/* =========================================================
  * ?add= による投げ込み(音声入力ショートカット用)
  * ======================================================= */
 async function handleAddParam() {
@@ -1540,6 +1687,8 @@ async function start() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service Worker を登録できませんでした', e));
   // 起動時の同期は表示のあとに裏で行う(通信を待たない)
   scheduleSync(300);
+  // 整理を依頼したまま閉じていた場合は、続きを見守る
+  if (organizeState()) pollOrganize(1000);
 }
 start();
 </script>
