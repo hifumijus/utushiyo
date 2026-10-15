@@ -127,3 +127,28 @@ test('完了済みの画面に完了した項目が出て、そこから未完�
   await expect(page.locator('#view-done .row')).toHaveCount(0);
   expect((await storedItems(page))[0].status).toBe('open');
 });
+
+test('ホーム下部にリストごとの件数・期限切れの数・今日の完了数が出て、押すとそのリストへ移る', async ({ page }) => {
+  await openApp(page);
+  for (const [list, text] of [['chores', '掃除A'], ['chores', '掃除B'], ['books', '本A'], ['todo', '用事A']]) {
+    await page.goto('#/list/' + list);
+    await page.locator('#list-capture-text').fill(text);
+    await page.locator('#list-capture-btn').click();
+    await expect(page.locator('#list-capture-text')).toHaveValue('');
+  }
+  await page.goto('#/list/chores');
+  await page.locator('.row', { hasText: '掃除A' }).locator('.row-body').click();
+  await page.locator('#edit-due').fill('2000-01-01');
+  await page.locator('#edit-form button[type=submit]').click();
+  await page.goto('#/list/todo');
+  await page.locator('.row', { hasText: '用事A' }).locator('.check').click();
+
+  await page.goto('#/');
+  const tile = name => page.locator('.tile', { has: page.locator('.name', { hasText: name }) });
+  await expect(tile('家事').locator('.num')).toHaveText('2期限切れ1');
+  await expect(tile('ためておく').locator('.num')).toHaveText('1');
+  await expect(tile('やること').locator('.num')).toHaveText('0');
+  await expect(tile('今日の完了').locator('.num')).toHaveText('1');
+  await tile('家事').click();
+  await expect(page.locator('#title')).toHaveText('家事');
+});
