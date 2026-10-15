@@ -105,7 +105,9 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
   display: block; width: 100%; min-height: 76px; max-height: 40vh; resize: none;
   border: 0; outline: none; background: transparent; font-size: 17px; line-height: 1.5; padding: 4px 4px;
 }
-.capture-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; }
+.capture-actions { display: flex; justify-content: space-between; align-items: center; gap: 4px 8px; margin-top: 6px; flex-wrap: wrap; }
+.capture-actions .left { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; }
+.capture-actions > .btn { margin-left: auto; }
 .split-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding-left: 4px; font-size: 13px; color: var(--muted); }
 .split-toggle input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
 .btn {
@@ -140,7 +142,37 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 }
 .focus-note { color: var(--muted); font-size: 14px; white-space: pre-wrap; word-break: break-word; max-height: 4.5em; overflow: hidden; }
 .focus-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto; padding-top: 14px; }
+.focus-actions.three { grid-template-columns: 1fr 1fr 1fr; }
+.focus-actions.three .btn { padding: 0 4px; white-space: nowrap; }
+.focus-timer { margin: 4px 0 2px; font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.focus-timer small { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 8px; letter-spacing: 0; }
+.focus-timer.over { color: var(--warn); }
 .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 24px 8px; }
+
+/* 期限・見込み時間 */
+.due-overdue { color: var(--danger); font-weight: 600; }
+.due-today { color: var(--warn); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip {
+  min-height: 36px; padding: 0 12px; border-radius: 18px; border: 1px solid var(--line);
+  background: var(--surface); font-size: 14px; color: var(--text);
+}
+.chip.on { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+.chips input[type=date], .chips input[type=number] {
+  min-height: 36px; padding: 4px 10px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--surface); font-size: 16px; width: auto;
+}
+.chips input[type=number] { width: 5.5em; }
+.picker-label { font-size: 12px; color: var(--muted); margin: 0 2px 4px; }
+.opts-btn { min-height: 44px; padding: 0 8px; border: 0; background: none; color: var(--accent); font-size: 13px; text-align: left; }
+.capture-opts { border-top: 1px solid var(--line); margin-top: 6px; padding: 10px 2px 2px; display: grid; gap: 10px; }
+
+/* すきま時間 */
+.gap-head { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 44px; margin-top: 16px;
+  padding: 0 4px; border: 0; background: none; font-size: 13px; font-weight: 600; color: var(--muted); }
+.gap-hint { font-size: 12px; color: var(--muted); margin: 8px 4px 0; }
+.row-start { flex: none; align-self: center; margin-right: 10px; min-height: 36px; padding: 0 12px; border-radius: 10px;
+  border: 1px solid var(--accent); background: var(--surface); color: var(--accent); font-weight: 600; font-size: 14px; }
 
 /* 一覧 */
 .rows { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
@@ -229,8 +261,17 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     <form class="capture" id="capture-form" autocomplete="off">
       <textarea id="capture-text" rows="3" aria-label="投げ込み欄" placeholder="思いついたことを書く(インボックスに入ります)" enterkeyhint="enter"></textarea>
       <div class="capture-actions">
-        <label class="split-toggle"><input type="checkbox" class="split-check"> 1行ずつ別の項目にする</label>
+        <div class="left">
+          <label class="split-toggle"><input type="checkbox" class="split-check"> 1行ずつ別の項目にする</label>
+          <button type="button" class="opts-btn">期限・見込み ▾</button>
+        </div>
         <button class="btn btn-primary" type="submit" id="capture-btn" disabled>追加</button>
+      </div>
+      <div class="capture-opts" hidden>
+        <div><div class="picker-label">期限</div>
+          <div class="chips due-picker"><button type="button" class="chip" data-set="">なし</button><button type="button" class="chip" data-set="today">今日</button><button type="button" class="chip" data-set="week">今週</button><input type="date" aria-label="期限の日付"></div></div>
+        <div><div class="picker-label">見込み時間</div>
+          <div class="chips est-picker"><button type="button" class="chip" data-set="">なし</button><button type="button" class="chip" data-set="5">5分</button><button type="button" class="chip" data-set="15">15分</button><button type="button" class="chip" data-set="30">30分</button><button type="button" class="chip" data-set="60">60分</button><input type="number" inputmode="numeric" min="1" max="1440" placeholder="分" aria-label="見込み時間(分)"></div></div>
       </div>
     </form>
     <div id="home-dynamic"></div>
@@ -241,8 +282,17 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     <form class="capture" id="list-capture-form" autocomplete="off">
       <textarea id="list-capture-text" rows="2" aria-label="このリストに追加" placeholder="このリストに追加" enterkeyhint="enter"></textarea>
       <div class="capture-actions">
-        <label class="split-toggle"><input type="checkbox" class="split-check"> 1行ずつ別の項目にする</label>
+        <div class="left">
+          <label class="split-toggle"><input type="checkbox" class="split-check"> 1行ずつ別の項目にする</label>
+          <button type="button" class="opts-btn">期限・見込み ▾</button>
+        </div>
         <button class="btn btn-primary" type="submit" id="list-capture-btn" disabled>追加</button>
+      </div>
+      <div class="capture-opts" hidden>
+        <div><div class="picker-label">期限</div>
+          <div class="chips due-picker"><button type="button" class="chip" data-set="">なし</button><button type="button" class="chip" data-set="today">今日</button><button type="button" class="chip" data-set="week">今週</button><input type="date" aria-label="期限の日付"></div></div>
+        <div><div class="picker-label">見込み時間</div>
+          <div class="chips est-picker"><button type="button" class="chip" data-set="">なし</button><button type="button" class="chip" data-set="5">5分</button><button type="button" class="chip" data-set="15">15分</button><button type="button" class="chip" data-set="30">30分</button><button type="button" class="chip" data-set="60">60分</button><input type="number" inputmode="numeric" min="1" max="1440" placeholder="分" aria-label="見込み時間(分)"></div></div>
       </div>
     </form>
     <div id="list-dynamic"></div>
@@ -311,9 +361,12 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       <label class="field"><span>リスト</span>
         <select id="edit-list"></select>
       </label>
-      <label class="field"><span>期限</span>
-        <input id="edit-due" type="date">
-      </label>
+      <div class="field"><span>期限</span>
+        <div class="chips due-picker"><button type="button" class="chip" data-set="">なし</button><button type="button" class="chip" data-set="today">今日</button><button type="button" class="chip" data-set="week">今週</button><input id="edit-due" type="date" aria-label="期限の日付"></div>
+      </div>
+      <div class="field"><span>見込み時間</span>
+        <div class="chips est-picker"><button type="button" class="chip" data-set="">なし</button><button type="button" class="chip" data-set="5">5分</button><button type="button" class="chip" data-set="15">15分</button><button type="button" class="chip" data-set="30">30分</button><button type="button" class="chip" data-set="60">60分</button><input id="edit-est" type="number" inputmode="numeric" min="1" max="1440" placeholder="分" aria-label="見込み時間(分)"></div>
+      </div>
       <label class="field"><span>タグ(読点またはカンマで区切る)</span>
         <input id="edit-tags" autocapitalize="off" placeholder="例: 急ぎ、電話">
       </label>
@@ -336,7 +389,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 /* =========================================================
  * 定数
  * ======================================================= */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const SCHEMA_VERSION = 1;
 const DB_NAME = 'nagekomi';
 const DB_VERSION = 1;
@@ -360,8 +413,6 @@ const LISTS = [
   { id: 'places',   name: '行った店', stock: true },
 ];
 const LIST_BY_ID = new Map(LISTS.map(l => [l.id, l]));
-// 1件表示で順に出すリスト
-const FOCUS_LISTS = ['today', 'todo'];
 // 古い順(=後回しにしたものが後ろ)で並べるリスト。それ以外は新しい順。
 const QUEUE_LISTS = new Set(['today', 'todo']);
 
@@ -425,15 +476,75 @@ function restLines(text) {
   const i = lines.findIndex(l => l.trim());
   return i < 0 ? '' : lines.slice(i + 1).join('\n').trim();
 }
-function shortDate(due) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(due || '');
-  return m ? `${Number(m[2])}/${Number(m[3])}` : String(due);
-}
 function displayTime(iso) {
   const t = parseTime(iso);
   if (!t) return '—';
   const d = new Date(t);
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+const WEEKDAYS = '日月火水木金土';
+const pad2 = n => String(n).padStart(2, '0');
+function dateStr(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function todayStr() { return dateStr(new Date()); }
+// 「今週」= 今週の日曜日(月曜はじまり)。日曜に押した場合はその日
+function weekEndStr() {
+  const d = new Date();
+  d.setDate(d.getDate() + (7 - d.getDay()) % 7);
+  return dateStr(d);
+}
+function dueDate(it) {
+  const m = /^\d{4}-\d{2}-\d{2}/.exec(it && it.due ? String(it.due) : '');
+  return m ? m[0] : null;
+}
+// 期限の表示と色分け。overdue=期限切れ / today=今日まで / week=今週中 / later=それ以降
+function dueInfo(it) {
+  if (!it.due) return null;
+  const d = dueDate(it);
+  if (!d) return { cls: 'later', label: '期限 ' + it.due };
+  const [y, m, day] = d.split('-').map(Number);
+  const md = `${m}/${day}(${WEEKDAYS[new Date(y, m - 1, day).getDay()]})`;
+  const today = todayStr();
+  if (it.status === 'open' && d < today) return { cls: 'overdue', label: `期限切れ ${md}` };
+  if (d === today) return { cls: 'today', label: '今日まで' };
+  if (d <= weekEndStr()) return { cls: 'week', label: `${md}まで` };
+  return { cls: 'later', label: `${md}まで` };
+}
+function dueHtml(it) {
+  const d = dueInfo(it);
+  return d ? `<span class="due-${d.cls}">${esc(d.label)}</span>` : '';
+}
+function estimateOf(it) {
+  const n = Number(it.estimate_min);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+function fmtMin(min) {
+  const m = Math.round(min);
+  return m < 60 ? `${m}分` : `${Math.floor(m / 60)}時間${m % 60 ? (m % 60) + '分' : ''}`;
+}
+function fmtClock(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), ss = sec % 60;
+  return h ? `${h}:${pad2(m)}:${pad2(ss)}` : `${pad2(m)}:${pad2(ss)}`;
+}
+// 実績(秒)。計測中なら開始からの経過も足す
+function elapsedSec(it, now = Date.now()) {
+  const base = Math.max(0, Math.floor(Number(it.spent_sec) || 0));
+  if (!it.timer_started_at) return base;
+  return base + Math.max(0, Math.floor((now - parseTime(it.timer_started_at)) / 1000));
+}
+function isRunning(it) {
+  return !!it.timer_started_at && it.status === 'open' && !it.deleted;
+}
+// 1件表示で「後回し」にした、期限の迫った項目(その日のあいだだけ優先表示から外す。端末ごと)
+function laterToday() {
+  try {
+    const o = JSON.parse(localStorage.getItem('laterToday') || '{}');
+    return new Set(o.date === todayStr() && Array.isArray(o.ids) ? o.ids : []);
+  } catch { return new Set(); }
+}
+function addLaterToday(id) {
+  const set = laterToday();
+  set.add(id);
+  try { localStorage.setItem('laterToday', JSON.stringify({ date: todayStr(), ids: [...set] })); } catch { /* 使えなくても動作は続ける */ }
 }
 function parseTags(s) {
   return String(s || '').split(/[,、，]/).map(t => t.trim()).filter(Boolean);
@@ -517,17 +628,19 @@ async function saveLocal(items) {
   }
   scheduleSync(1500);
 }
-function newItem(text, list = 'inbox') {
+// extra: { due, estimate_min } を投げ込み時に指定できる
+function newItem(text, list = 'inbox', extra = {}) {
   const ts = nextStamp(null);
   return {
-    id: uuid(), text, note: '', list, tags: [], status: 'open', due: null,
+    id: uuid(), text, note: '', list, tags: [], status: 'open', due: extra.due || null,
+    estimate_min: extra.estimate_min || null, spent_sec: 0, timer_started_at: null, done_at: null,
     created_at: ts, updated_at: ts, deleted: false,
   };
 }
-async function addItem(text, list = 'inbox') {
+async function addItem(text, list = 'inbox', extra = {}) {
   const t = String(text || '').replace(/\r\n?/g, '\n').trim();
   if (!t) return null;
-  const it = newItem(t, list);
+  const it = newItem(t, list, extra);
   await saveLocal([it]);
   return it;
 }
@@ -538,22 +651,29 @@ function splitLines(text) {
     .filter(Boolean);
 }
 // 複数件をまとめて追加する。並び順を保つため、1件目がいちばん古くなるよう1秒ずつずらす
-async function addItems(texts, list = 'inbox') {
+async function addItems(texts, list = 'inbox', extra = {}) {
   const now = Math.floor(Date.now() / 1000) * 1000;
   const items = texts.map((t, i) => {
-    const it = newItem(t, list);
+    const it = newItem(t, list, extra);
     it.created_at = it.updated_at = formatTime(now - (texts.length - 1 - i) * 1000);
     return it;
   });
   if (items.length) await saveLocal(items);
   return items;
 }
+function changed(old, changes, minMs = 0) {
+  return { ...old, ...changes, updated_at: nextStamp(old.updated_at, minMs) };
+}
 async function updateItem(id, changes, minMs = 0) {
   const old = state.items.get(id);
   if (!old) return null;
-  const it = { ...old, ...changes, updated_at: nextStamp(old.updated_at, minMs) };
+  const it = changed(old, changes, minMs);
   await saveLocal([it]);
   return it;
+}
+// 計測中なら止めて、経過時間を spent_sec に足し込む変更内容を返す
+function pauseChanges(it, now = Date.now()) {
+  return it.timer_started_at ? { spent_sec: elapsedSec(it, now), timer_started_at: null } : {};
 }
 
 /* =========================================================
@@ -568,8 +688,31 @@ function openItemsOf(list) {
   else arr.sort((a, b) => parseTime(b.created_at) - parseTime(a.created_at));
   return arr;
 }
+// 1件表示の順番: 計測中 → 期限切れ・今日まで(どのリストでも) → 今日やる(+後回しにした期限の迫った項目) → やること
 function focusQueue() {
-  return FOCUS_LISTS.flatMap(l => openItemsOf(l));
+  const open = visibleItems().filter(i => i.status === 'open');
+  const today = todayStr();
+  const skipped = laterToday();
+  const byUpdated = (a, b) => parseTime(a.updated_at) - parseTime(b.updated_at) || String(a.created_at).localeCompare(String(b.created_at));
+  const urgentDue = i => { const d = dueDate(i); return !!d && d <= today; };
+  const running = open.filter(isRunning).sort(byUpdated);
+  const urgent = open.filter(i => !isRunning(i) && urgentDue(i) && !skipped.has(i.id))
+    .sort((a, b) => dueDate(a).localeCompare(dueDate(b)) || byUpdated(a, b));
+  const seen = new Set([...running, ...urgent].map(i => i.id));
+  const todo = openItemsOf('todo').filter(i => !seen.has(i.id));
+  for (const i of todo) seen.add(i.id);
+  // 後回しにした期限の迫った項目は、今日やると同じ列に入れて updated_at の順に回す
+  const rotation = open.filter(i => !seen.has(i.id) && (i.list === 'today' || urgentDue(i))).sort(byUpdated);
+  return [...running, ...urgent, ...rotation, ...todo];
+}
+// すきま時間の提案: 見込み時間が min 分以内の項目を、期限の近い順 → 時間を使い切れる順に
+const LIST_RANK = ['today', 'todo', 'chores', 'shopping', 'someday', 'inbox'];
+function gapSuggestions(min) {
+  const rank = i => { const d = dueInfo(i); return d ? { overdue: 0, today: 1, week: 2, later: 3 }[d.cls] : 4; };
+  const lr = i => { const r = LIST_RANK.indexOf(i.list); return r < 0 ? LIST_RANK.length : r; };
+  return visibleItems()
+    .filter(i => i.status === 'open' && !isRunning(i) && i.list !== 'work' && estimateOf(i) && estimateOf(i) <= min)
+    .sort((a, b) => rank(a) - rank(b) || estimateOf(b) - estimateOf(a) || lr(a) - lr(b) || parseTime(a.created_at) - parseTime(b.created_at));
 }
 function closedItems() {
   return visibleItems().filter(i => i.status !== 'open')
@@ -586,44 +729,78 @@ function unknownListIds() {
  * ======================================================= */
 let route = { view: 'home', arg: null };
 
-function rowHtml(it, { showList = false } = {}) {
+function fmtSpent(sec) {
+  return sec < 60 ? '1分未満' : fmtMin(sec / 60);
+}
+function rowHtml(it, { showList = false, startBtn = false } = {}) {
   const done = it.status !== 'open';
   const meta = [];
   if (showList) meta.push(esc(listName(it.list)));
   if (it.status === 'archived') meta.push('アーカイブ');
-  if (it.due) meta.push('期限 ' + esc(shortDate(it.due)));
+  if (isRunning(it)) meta.push('<span class="due-today">計測中</span>');
+  if (it.due && !done) meta.push(dueHtml(it));
+  const est = estimateOf(it), spent = elapsedSec(it);
+  if (done && spent > 0) meta.push(`実際 ${esc(fmtSpent(spent))}${est ? `(目安 ${esc(fmtMin(est))})` : ''}`);
+  else if (est) meta.push(`目安 ${esc(fmtMin(est))}`);
   for (const t of (Array.isArray(it.tags) ? it.tags : [])) meta.push(`<span class="tag">${esc(t)}</span>`);
   if (it.note) meta.push('メモあり');
   return `<li class="row${done ? ' done' : ''}" data-id="${esc(it.id)}">
     <button type="button" class="check${done ? ' is-done' : ''}" data-action="${done ? 'reopen' : 'done'}" aria-label="${done ? '未完了に戻す' : '完了にする'}"></button>
     <button type="button" class="row-body" data-action="edit">
       <div class="row-title">${esc(firstLine(it.text))}</div>
-      ${meta.length ? `<div class="row-meta">${meta.join('')}</div>` : ''}
+      ${meta.length ? `<div class="row-meta">${meta.map(m => m.startsWith('<span') ? m : `<span>${m}</span>`).join('')}</div>` : ''}
     </button>
+    ${startBtn ? '<button type="button" class="row-start" data-action="start">始める</button>' : ''}
   </li>`;
 }
 
+let gapOpen = false;
+let gapMin = 15;
+function focusCardHtml(head, queueLength) {
+  const note = [restLines(head.text), head.note].filter(Boolean).join('\n');
+  const running = isRunning(head);
+  const spent = elapsedSec(head);
+  const est = estimateOf(head);
+  const due = dueInfo(head);
+  const meta = [esc(listName(head.list)), due ? `<span class="due-${due.cls}">${esc(due.label)}</span>` : ''].filter(Boolean).join(' ・ ');
+  const timer = running || spent > 0
+    ? `<div class="focus-timer${est && spent > est * 60 ? ' over' : ''}" data-est="${est || ''}"><span data-timer="${esc(head.id)}">${fmtClock(spent)}</span><small>${running ? '計測中' : '一時停止中'}${est ? ` ・ 目安 ${esc(fmtMin(est))}` : ''}</small></div>`
+    : (est ? `<div class="focus-note">目安 ${esc(fmtMin(est))}</div>` : '');
+  return `<div class="focus-card" data-id="${esc(head.id)}">
+      <div class="focus-meta"><span>${meta}</span><span>残り ${queueLength} 件</span></div>
+      <button type="button" class="focus-title" data-action="edit">${esc(firstLine(head.text))}</button>
+      ${timer}
+      ${note ? `<div class="focus-note">${esc(note)}</div>` : ''}
+      <div class="focus-actions three">
+        <button type="button" class="btn" data-action="later"${queueLength < 2 ? ' disabled' : ''}>後回し</button>
+        ${running
+          ? '<button type="button" class="btn" data-action="pause">一時停止</button>'
+          : `<button type="button" class="btn" data-action="start">${spent > 0 ? '再開' : '開始'}</button>`}
+        <button type="button" class="btn btn-primary" data-action="done">完了</button>
+      </div>
+    </div>`;
+}
+function gapHtml() {
+  let body = '';
+  if (gapOpen) {
+    const all = gapSuggestions(gapMin);
+    const noEst = visibleItems().filter(i => i.status === 'open' && i.list !== 'work' && !estimateOf(i)).length;
+    body = `<div class="chips" style="margin:4px 0 10px">${[5, 15, 30, 60].map(m =>
+        `<button type="button" class="chip${m === gapMin ? ' on' : ''}" data-action="gap" data-min="${m}">${m}分</button>`).join('')}</div>
+      ${all.length ? `<ul class="rows">${all.slice(0, 8).map(i => rowHtml(i, { showList: true, startBtn: true })).join('')}</ul>`
+        : `<p class="empty">${gapMin}分以内で終わる項目はありません。</p>`}
+      <p class="gap-hint">見込み時間が登録されている項目から、期限の近い順に提案します。${all.length > 8 ? `ほかに ${all.length - 8} 件あります。` : ''}${noEst ? `見込み時間が未登録の項目(${noEst} 件)は対象外です。` : ''}</p>`;
+  }
+  return `<button type="button" class="gap-head" data-action="toggle-gap" aria-expanded="${gapOpen}"><span>すきま時間で探す</span><span>${gapOpen ? '▴' : '▾'}</span></button>${body}`;
+}
 function renderHome() {
   const inboxCount = openItemsOf('inbox').length;
   const queue = focusQueue();
   const today = openItemsOf('today');
   const head = queue[0];
-
-  let focus;
-  if (head) {
-    const note = [restLines(head.text), head.note].filter(Boolean).join('\n');
-    focus = `<div class="focus-card" data-id="${esc(head.id)}">
-      <div class="focus-meta"><span>${esc(listName(head.list))}${head.due ? ' ・ 期限 ' + esc(shortDate(head.due)) : ''}</span><span>残り ${queue.length} 件</span></div>
-      <button type="button" class="focus-title" data-action="edit">${esc(firstLine(head.text))}</button>
-      ${note ? `<div class="focus-note">${esc(note)}</div>` : ''}
-      <div class="focus-actions">
-        <button type="button" class="btn" data-action="later"${queue.length < 2 ? ' disabled' : ''}>後回し</button>
-        <button type="button" class="btn btn-primary" data-action="done">完了</button>
-      </div>
-    </div>`;
-  } else {
-    focus = `<div class="focus-card"><p class="empty">「今日やる」「やること」は空です。<br>インボックスの項目を振り分けると、ここに1件ずつ表示されます。</p></div>`;
-  }
+  const focus = head
+    ? focusCardHtml(head, queue.length)
+    : `<div class="focus-card"><p class="empty">「今日やる」「やること」は空です。<br>インボックスの項目を振り分けると、ここに1件ずつ表示されます。</p></div>`;
 
   $('#home-dynamic').innerHTML = `
     <a class="inbox-link" href="#/list/inbox" data-nav>
@@ -632,6 +809,7 @@ function renderHome() {
     </a>
     <h2 class="section-title">1件表示</h2>
     ${focus}
+    ${gapHtml()}
     <h2 class="section-title">今日やる(${today.length})</h2>
     ${today.length ? `<ul class="rows">${today.map(i => rowHtml(i)).join('')}</ul>` : '<p class="empty">今日やることはありません。</p>'}
   `;
@@ -769,6 +947,35 @@ function goBack() {
 }
 
 /* =========================================================
+ * 期限・見込み時間の選択ボタン(chips の中の input に値を入れる)
+ * ======================================================= */
+function chipValue(v) {
+  return v === 'today' ? todayStr() : v === 'week' ? weekEndStr() : v;
+}
+function syncChips(root) {
+  const v = root.querySelector('input').value;
+  for (const b of root.querySelectorAll('[data-set]')) b.classList.toggle('on', chipValue(b.dataset.set) === v);
+}
+function setupPickers() {
+  for (const root of document.querySelectorAll('.due-picker, .est-picker')) {
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-set]');
+      if (!b) return;
+      const input = root.querySelector('input');
+      input.value = chipValue(b.dataset.set);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    root.addEventListener('input', () => syncChips(root));
+    root.addEventListener('change', () => syncChips(root));
+    syncChips(root);
+  }
+}
+function parseEstimate(v) {
+  const n = Math.round(Number(v));
+  return v !== '' && Number.isFinite(n) && n > 0 ? Math.min(n, 1440) : null;
+}
+
+/* =========================================================
  * 編集ダイアログ
  * ======================================================= */
 let editing = null; // { id, initial: {...} }
@@ -784,15 +991,24 @@ function openEditor(id) {
     note: it.note || '',
     list: it.list,
     due: it.due ? String(it.due).slice(0, 10) : '',
+    est: estimateOf(it) ? String(estimateOf(it)) : '',
     tags: (Array.isArray(it.tags) ? it.tags : []).join('、'),
   };
   $('#edit-text').value = initial.text;
   $('#edit-note').value = initial.note;
   sel.value = initial.list;
   $('#edit-due').value = initial.due;
+  $('#edit-est').value = initial.est;
+  for (const root of $('#edit-dialog').querySelectorAll('.due-picker, .est-picker')) syncChips(root);
   $('#edit-tags').value = initial.tags;
   $('#edit-toggle-done').textContent = it.status === 'open' ? '完了にする' : '未完了に戻す';
-  $('#edit-info').innerHTML = `作成: ${esc(displayTime(it.created_at))}<br>更新: ${esc(displayTime(it.updated_at))}`;
+  const spent = elapsedSec(it);
+  $('#edit-info').innerHTML = [
+    spent > 0 ? `実績: ${esc(fmtSpent(spent))}${isRunning(it) ? '(計測中)' : ''}` : '',
+    it.done_at ? `完了: ${esc(displayTime(it.done_at))}` : '',
+    `作成: ${esc(displayTime(it.created_at))}`,
+    `更新: ${esc(displayTime(it.updated_at))}`,
+  ].filter(Boolean).join('<br>');
   editing = { id, initial };
   const dlg = $('#edit-dialog');
   if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
@@ -810,6 +1026,7 @@ function collectEdits() {
     note: $('#edit-note').value.replace(/\r\n?/g, '\n'),
     list: $('#edit-list').value,
     due: $('#edit-due').value,
+    est: $('#edit-est').value,
     tags: $('#edit-tags').value,
   };
   const ch = {};
@@ -817,6 +1034,7 @@ function collectEdits() {
   if (cur.note !== initial.note) ch.note = cur.note;
   if (cur.list !== initial.list) ch.list = cur.list;
   if (cur.due !== initial.due) ch.due = cur.due || null;
+  if (cur.est !== initial.est) ch.estimate_min = parseEstimate(cur.est);
   if (cur.tags !== initial.tags) ch.tags = parseTags(cur.tags);
   return ch;
 }
@@ -859,20 +1077,42 @@ function showToast(msg, action) {
 async function markDone(id) {
   const prev = state.items.get(id);
   if (!prev) return;
-  await updateItem(id, { status: 'done' });
-  showToast('完了にしました', { label: '元に戻す', fn: () => updateItem(id, { status: 'open' }) });
+  const now = Date.now();
+  const it = await updateItem(id, { status: 'done', done_at: formatTime(now), ...pauseChanges(prev, now) });
+  const spent = elapsedSec(it), est = estimateOf(it);
+  const msg = spent > 0 ? `完了: 実際 ${fmtSpent(spent)}${est ? ` / 目安 ${fmtMin(est)}` : ''}` : '完了にしました';
+  showToast(msg, { label: '元に戻す', fn: () => updateItem(id, { status: 'open', done_at: null }) });
 }
 async function reopen(id) {
-  await updateItem(id, { status: 'open' });
+  await updateItem(id, { status: 'open', done_at: null });
   showToast('未完了に戻しました');
 }
 async function later(id) {
-  // 項目の中身は変えず、updated_at を同じリストのどの項目よりも新しくして、表示順の最後へ回す
+  // 項目の中身は変えず、updated_at を同じリストのどの項目よりも新しくして、表示順の最後へ回す。計測中なら一時停止する
   const it = state.items.get(id);
   if (!it) return;
-  const latest = Math.max(0, ...openItemsOf(it.list).filter(i => i.id !== id).map(i => parseTime(i.updated_at)));
-  await updateItem(id, {}, latest);
-  showToast('後回しにしました');
+  const d = dueDate(it);
+  if (d && d <= todayStr()) addLaterToday(id);
+  const peers = [...openItemsOf(it.list), ...focusQueue()].filter(i => i.id !== id);
+  const latest = Math.max(0, ...peers.map(i => parseTime(i.updated_at)));
+  await updateItem(id, pauseChanges(it), latest);
+  showToast(it.timer_started_at ? '一時停止して後回しにしました' : '後回しにしました');
+}
+// 計測は同時に1件だけ。ほかに計測中の項目があれば一時停止してから始める
+async function startTimer(id) {
+  const it = state.items.get(id);
+  if (!it || it.status !== 'open' || isRunning(it)) return;
+  const now = Date.now();
+  const others = [...state.items.values()].filter(o => o.id !== id && isRunning(o)).map(o => changed(o, pauseChanges(o, now)));
+  await saveLocal([...others, changed(it, { timer_started_at: formatTime(now) })]);
+  showToast(others.length ? '計測を切り替えました' : '計測を始めました');
+  if (route.view === 'home') { const card = $('.focus-card'); if (card) card.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+}
+async function pauseTimer(id) {
+  const it = state.items.get(id);
+  if (!it || !it.timer_started_at) return;
+  await updateItem(id, pauseChanges(it));
+  showToast('一時停止しました');
 }
 async function removeItem(id) {
   if (!confirm('この項目を削除しますか?')) return;
@@ -886,10 +1126,41 @@ function bindEvents() {
   const autoGrow = ta => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight + 2, window.innerHeight * 0.4) + 'px'; };
   let split = false;
   try { split = localStorage.getItem('splitLines') === '1'; } catch { /* 使えなくても既定値で動く */ }
+  setupPickers();
   const forms = [
     { form: $('#capture-form'), ta: $('#capture-text'), btn: $('#capture-btn'), list: () => 'inbox' },
     { form: $('#list-capture-form'), ta: $('#list-capture-text'), btn: $('#list-capture-btn'), list: () => route.view === 'list' ? route.arg : null },
   ];
+  // 期限・見込み時間(投げ込み時に任意で指定)
+  const optsOf = f => ({
+    panel: f.form.querySelector('.capture-opts'),
+    toggle: f.form.querySelector('.opts-btn'),
+    due: f.form.querySelector('.due-picker input'),
+    est: f.form.querySelector('.est-picker input'),
+  });
+  const extraOf = f => {
+    const o = optsOf(f);
+    return { due: o.due.value || null, estimate_min: parseEstimate(o.est.value) };
+  };
+  const optsLabel = f => {
+    const o = optsOf(f), x = extraOf(f);
+    const parts = [];
+    if (x.due) parts.push(dueInfo({ due: x.due, status: 'open' }).label);
+    if (x.estimate_min) parts.push(fmtMin(x.estimate_min));
+    o.toggle.textContent = (parts.length ? parts.join('・') : '期限・見込み') + (o.panel.hidden ? ' ▾' : ' ▴');
+  };
+  const resetOpts = f => {
+    const o = optsOf(f);
+    o.due.value = ''; o.est.value = ''; o.panel.hidden = true;
+    for (const root of f.form.querySelectorAll('.due-picker, .est-picker')) syncChips(root);
+    optsLabel(f);
+  };
+  for (const f of forms) {
+    const o = optsOf(f);
+    o.toggle.addEventListener('click', () => { o.panel.hidden = !o.panel.hidden; optsLabel(f); });
+    o.panel.addEventListener('input', () => optsLabel(f));
+    o.panel.addEventListener('click', () => setTimeout(() => optsLabel(f)));
+  }
   const refresh = f => {
     const n = split ? splitLines(f.ta.value).length : (f.ta.value.trim() ? 1 : 0);
     f.btn.disabled = n === 0;
@@ -911,8 +1182,10 @@ function bindEvents() {
       const texts = split ? splitLines(text) : (text.trim() ? [text] : []);
       if (!list || !texts.length) return;
       f.ta.value = ''; refresh(f); autoGrow(f.ta);
+      const extra = extraOf(f);
       try {
-        if (texts.length > 1) await addItems(texts, list); else await addItem(texts[0], list);
+        if (texts.length > 1) await addItems(texts, list, extra); else await addItem(texts[0], list, extra);
+        resetOpts(f);
         showToast(`${list === 'inbox' ? 'インボックス' : '「' + listName(list) + '」'}に${texts.length > 1 ? ` ${texts.length} 件を` : ''}追加しました`);
       } catch { f.ta.value = text; refresh(f); }
       if (list === 'inbox') f.ta.focus();
@@ -935,6 +1208,10 @@ function bindEvents() {
       case 'done': if (id) markDone(id); break;
       case 'reopen': if (id) reopen(id); break;
       case 'later': if (id) later(id); break;
+      case 'start': if (id) startTimer(id); break;
+      case 'pause': if (id) pauseTimer(id); break;
+      case 'toggle-gap': gapOpen = !gapOpen; render(); break;
+      case 'gap': gapMin = Number(btn.dataset.min) || 15; render(); break;
       case 'edit': if (id) openEditor(id); break;
       case 'toggle-list-done':
         if (listShowDone.has(route.arg)) listShowDone.delete(route.arg); else listShowDone.add(route.arg);
@@ -1015,6 +1292,16 @@ function bindEvents() {
   window.addEventListener('offline', () => { state.offline = true; render(); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleSync(500); });
   setInterval(() => { if (document.visibilityState === 'visible') scheduleSync(0); }, 5 * 60 * 1000);
+  setInterval(() => {
+    for (const el of document.querySelectorAll('[data-timer]')) {
+      const it = state.items.get(el.dataset.timer);
+      if (!it) continue;
+      const sec = elapsedSec(it);
+      el.textContent = fmtClock(sec);
+      const box = el.parentElement, est = Number(box.dataset.est);
+      box.classList.toggle('over', est > 0 && sec > est * 60);
+    }
+  }, 1000);
 }
 
 /* =========================================================
