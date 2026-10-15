@@ -16,9 +16,10 @@ test('投げ込んだ内容はインボックスに入り、端末内に要件�
 
   const [it] = await storedItems(page);
   expect(Object.keys(it).sort()).toEqual(
-    ['created_at', 'deleted', 'due', 'id', 'list', 'note', 'status', 'tags', 'text', 'updated_at']);
+    ['created_at', 'deleted', 'done_at', 'due', 'estimate_min', 'id', 'list', 'note', 'spent_sec', 'status', 'tags', 'text', 'timer_started_at', 'updated_at']);
   expect(it).toMatchObject({
     text: '牛乳を買う\n低脂肪のもの', note: '', list: 'inbox', tags: [], status: 'open', due: null, deleted: false,
+    estimate_min: null, spent_sec: 0, timer_started_at: null, done_at: null,
   });
   expect(it.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   expect(it.created_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+09:00$/);
