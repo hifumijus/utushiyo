@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>投げ込み</title>
+<meta name="description" content="思いついたことを素早く投げ込み、あとで整理・実行するためのアプリ">
+<meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141414" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="投げ込み">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>
+:root {
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --surface-2: #efede8;
+  --text: #1d1d1f;
+  --muted: #6e6e73;
+  --line: #e2e0da;
+  --accent: #2f6f5e;
+  --accent-text: #ffffff;
+  --accent-soft: #e3efe9;
+  --danger: #b3261e;
+  --warn: #9a6200;
+  --ok: #2f7a4f;
+  --radius: 14px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141414;
+    --surface: #1e1e1f;
+    --surface-2: #2a2a2c;
+    --text: #f2f2f2;
+    --muted: #a1a1a6;
+    --line: #333336;
+    --accent: #66b69c;
+    --accent-text: #0c1f19;
+    --accent-soft: #1f3029;
+    --danger: #ff8a80;
+    --warn: #e0b04f;
+    --ok: #7dcf9c;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  /* 国産の日本語フォントだけを指定する(メイリオ → ヒラギノ角ゴ → 游ゴシック) */
+  font-family: "Meiryo", "メイリオ", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", "Yu Gothic", "YuGothic", "游ゴシック", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+code { font-family: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+
+/* ヘッダー */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 4px;
+  padding: calc(var(--safe-top) + 6px) 12px 6px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar h1 { margin: 0; font-size: 17px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn {
+  width: 44px; height: 44px; border: 0; background: transparent; border-radius: 10px;
+  display: grid; place-items: center; font-size: 22px; color: var(--text);
+}
+.icon-btn:active { background: var(--surface-2); }
+.sync-chip {
+  min-width: 48px; height: 32px; padding: 0 10px; border-radius: 16px;
+  border: 1px solid var(--line); background: var(--surface);
+  font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.sync-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.sync-chip[data-state="synced"] .dot { background: var(--ok); }
+.sync-chip[data-state="pending"] .dot, .sync-chip[data-state="offline"] .dot { background: var(--warn); }
+.sync-chip[data-state="syncing"] .dot { background: var(--accent); animation: pulse 1s infinite alternate; }
+.sync-chip[data-state="error"] { color: var(--danger); border-color: var(--danger); }
+.sync-chip[data-state="error"] .dot { background: var(--danger); }
+@keyframes pulse { from { opacity: .3; } to { opacity: 1; } }
+
+main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bottom) + 96px); }
+.view[hidden] { display: none; }
+.section-title { margin: 24px 4px 8px; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+
+/* 投げ込み欄 */
+.capture { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; }
+.capture textarea {
+  display: block; width: 100%; min-height: 76px; max-height: 40vh; resize: none;
+  border: 0; outline: none; background: transparent; font-size: 17px; line-height: 1.5; padding: 4px 4px;
+}
+.capture-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; }
+.capture-actions .hint { font-size: 12px; color: var(--muted); padding-left: 4px; }
+.btn {
+  min-height: 44px; padding: 0 18px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface); font-weight: 600; font-size: 16px;
+}
+.btn:active { transform: scale(.98); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.btn-primary:disabled { opacity: .4; }
+.btn-danger { color: var(--danger); }
+.btn-block { width: 100%; }
+
+/* インボックス件数 */
+.inbox-link {
+  display: flex; align-items: center; justify-content: space-between; margin-top: 12px;
+  padding: 0 16px; min-height: 52px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: var(--text);
+}
+.inbox-link .count { font-weight: 700; font-size: 18px; }
+.inbox-link .count.zero { color: var(--muted); font-weight: 400; font-size: 15px; }
+.chev { color: var(--muted); margin-left: 8px; }
+
+/* 1件表示 */
+.focus-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; min-height: 150px; display: flex; flex-direction: column;
+}
+.focus-meta { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.focus-title {
+  margin: 10px 0 6px; font-size: 21px; font-weight: 600; line-height: 1.4; word-break: break-word;
+  background: none; border: 0; padding: 0; text-align: left;
+}
+.focus-note { color: var(--muted); font-size: 14px; white-space: pre-wrap; word-break: break-word; max-height: 4.5em; overflow: hidden; }
+.focus-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto; padding-top: 14px; }
+.empty { color: var(--muted); font-size: 14px; text-align: center; padding: 24px 8px; }
+
+/* 一覧 */
+.rows { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.rows:empty { display: none; }
+.row { display: flex; align-items: flex-start; gap: 4px; border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.check {
+  flex: none; width: 48px; min-height: 52px; border: 0; background: transparent; display: grid; place-items: center;
+}
+.check::before {
+  content: ""; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); display: block;
+}
+.check.is-done::before { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 3px var(--surface); }
+.row-body { flex: 1; min-width: 0; padding: 13px 14px 12px 0; border: 0; background: transparent; text-align: left; }
+.row-title { word-break: break-word; }
+.row.done .row-title { color: var(--muted); text-decoration: line-through; }
+.row-meta { font-size: 12px; color: var(--muted); margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.tag { background: var(--surface-2); border-radius: 6px; padding: 0 6px; }
+.toggle-done { display: block; margin: 12px auto 0; background: none; border: 0; color: var(--muted); font-size: 14px; min-height: 44px; padding: 0 12px; }
+
+/* メニュー */
+.menu-list { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.menu-list li + li { border-top: 1px solid var(--line); }
+.menu-list a {
+  display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 0 16px;
+  color: var(--text); text-decoration: none;
+}
+.menu-list .n { color: var(--muted); font-size: 14px; }
+
+/* フォーム */
+.field { display: block; margin-bottom: 14px; }
+.field > span { display: block; font-size: 13px; color: var(--muted); margin: 0 4px 6px; }
+.field input, .field textarea, .field select {
+  width: 100%; min-height: 46px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--surface); font-size: 16px;
+}
+.field textarea { resize: vertical; min-height: 96px; line-height: 1.5; }
+.field small { display: block; font-size: 12px; color: var(--muted); margin: 6px 4px 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+.card p { margin: 0 0 8px; }
+.status-line { font-size: 14px; color: var(--muted); }
+.status-line.err { color: var(--danger); white-space: pre-wrap; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-row .btn { flex: 1; }
+
+/* 編集ダイアログ */
+dialog {
+  border: 0; padding: 0; width: 100%; max-width: 640px; max-height: 100%; height: 100%;
+  margin: 0 auto; background: var(--bg); color: var(--text);
+}
+@media (min-width: 700px) { dialog { height: auto; max-height: 90vh; margin: 5vh auto; border-radius: 16px; } }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+.dlg-head {
+  position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: center;
+  padding: calc(var(--safe-top) + 6px) 8px 6px; background: var(--bg); border-bottom: 1px solid var(--line);
+}
+.dlg-head h2 { margin: 0; font-size: 17px; }
+.dlg-head .text-btn { min-height: 44px; padding: 0 12px; border: 0; background: none; font-size: 16px; color: var(--accent); }
+.dlg-head .text-btn.strong { font-weight: 700; }
+.dlg-body { padding: 16px 16px calc(var(--safe-bottom) + 24px); }
+.dlg-foot { display: grid; gap: 10px; margin-top: 8px; }
+.dlg-info { font-size: 12px; color: var(--muted); margin-top: 16px; line-height: 1.7; }
+
+/* トースト */
+.toast {
+  position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 20px); transform: translateX(-50%);
+  z-index: 50; max-width: calc(100% - 32px); display: flex; align-items: center; gap: 12px;
+  background: var(--text); color: var(--bg); border-radius: 12px; padding: 10px 10px 10px 16px;
+  font-size: 15px; box-shadow: 0 6px 24px rgba(0,0,0,.2);
+}
+.toast button { border: 0; background: transparent; color: var(--bg); font-weight: 700; min-height: 36px; padding: 0 8px; text-decoration: underline; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="icon-btn" id="nav-btn" type="button" aria-label="メニュー">☰</button>
+  <h1 id="title">投げ込み</h1>
+  <button class="sync-chip" id="sync-chip" type="button" data-state="local" aria-label="同期の状態">
+    <span class="dot"></span><span id="sync-label">端末内のみ</span>
+  </button>
+</header>
+
+<main>
+  <!-- ホーム -->
+  <section class="view" id="view-home">
+    <form class="capture" id="capture-form" autocomplete="off">
+      <textarea id="capture-text" rows="3" aria-label="投げ込み欄" placeholder="思いついたことを書く" enterkeyhint="enter"></textarea>
+      <div class="capture-actions">
+        <span class="hint">インボックスに入ります</span>
+        <button class="btn btn-primary" type="submit" id="capture-btn" disabled>追加</button>
+      </div>
+    </form>
+    <div id="home-dynamic"></div>
+  </section>
+
+  <!-- リスト -->
+  <section class="view" id="view-list" hidden>
+    <form class="capture" id="list-capture-form" autocomplete="off">
+      <textarea id="list-capture-text" rows="2" aria-label="このリストに追加" placeholder="このリストに追加" enterkeyhint="enter"></textarea>
+      <div class="capture-actions">
+        <span class="hint" id="list-capture-hint"></span>
+        <button class="btn btn-primary" type="submit" id="list-capture-btn" disabled>追加</button>
+      </div>
+    </form>
+    <div id="list-dynamic"></div>
+  </section>
+
+  <!-- メニュー -->
+  <section class="view" id="view-menu" hidden></section>
+
+  <!-- 完了済み -->
+  <section class="view" id="view-done" hidden></section>
+
+  <!-- 設定 -->
+  <section class="view" id="view-settings" hidden>
+    <h2 class="section-title" style="margin-top:8px">同期の状態</h2>
+    <div class="card" id="settings-status"></div>
+
+    <h2 class="section-title">GitHub との同期</h2>
+    <form id="settings-form" class="card" autocomplete="off">
+      <p class="status-line" style="margin-bottom:14px">
+        設定しなくても、この端末の中だけで全機能を使えます。アクセストークンを設定すると、データ用リポジトリの <code>items.json</code> と同期します。
+      </p>
+      <label class="field"><span>データ用リポジトリの持ち主(GitHub のユーザー名)</span>
+        <input id="set-owner" name="owner" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="例: hifumijus">
+      </label>
+      <label class="field"><span>データ用リポジトリの名前</span>
+        <input id="set-repo" name="repo" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="例: utushiyo-data">
+      </label>
+      <label class="field"><span>ブランチ</span>
+        <input id="set-branch" name="branch" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="main">
+      </label>
+      <label class="field"><span>ファイル名</span>
+        <input id="set-path" name="path" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="items.json">
+      </label>
+      <label class="field"><span>アクセストークン</span>
+        <input id="set-token" name="token" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="github_pat_ で始まる文字列">
+        <small id="token-note"></small>
+      </label>
+      <div class="btn-row">
+        <button class="btn btn-primary" type="submit">保存して同期</button>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn btn-danger" type="button" id="token-clear">トークンを削除</button>
+      </div>
+    </form>
+
+    <h2 class="section-title">このアプリについて</h2>
+    <div class="card status-line" id="about"></div>
+  </section>
+</main>
+
+<!-- 編集ダイアログ -->
+<dialog id="edit-dialog" aria-labelledby="edit-title">
+  <form method="dialog" id="edit-form" autocomplete="off">
+    <div class="dlg-head">
+      <button class="text-btn" type="button" id="edit-cancel">キャンセル</button>
+      <h2 id="edit-title">編集</h2>
+      <button class="text-btn strong" type="submit">保存</button>
+    </div>
+    <div class="dlg-body">
+      <label class="field"><span>本文(1行目が見出しになります)</span>
+        <textarea id="edit-text" rows="3"></textarea>
+      </label>
+      <label class="field"><span>メモ</span>
+        <textarea id="edit-note" rows="3"></textarea>
+      </label>
+      <label class="field"><span>リスト</span>
+        <select id="edit-list"></select>
+      </label>
+      <label class="field"><span>期限</span>
+        <input id="edit-due" type="date">
+      </label>
+      <label class="field"><span>タグ(読点またはカンマで区切る)</span>
+        <input id="edit-tags" autocapitalize="off" placeholder="例: 急ぎ、電話">
+      </label>
+      <div class="dlg-foot">
+        <button class="btn btn-block" type="button" id="edit-toggle-done">完了にする</button>
+        <button class="btn btn-block btn-danger" type="button" id="edit-delete">削除</button>
+      </div>
+      <div class="dlg-info" id="edit-info"></div>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden>
+  <span id="toast-msg"></span><button type="button" id="toast-action" hidden></button>
+</div>
+
+<script>
+'use strict';
+
+/* =========================================================
+ * 定数
+ * ======================================================= */
+const APP_VERSION = '1.0.0';
+const SCHEMA_VERSION = 1;
+const DB_NAME = 'nagekomi';
+const DB_VERSION = 1;
+const API = 'https://api.github.com';
+const DEFAULT_SETTINGS = { owner: '', repo: '', branch: 'main', path: 'items.json' };
+
+// list の値(データに保存する識別子)と画面上の名前。
+// stock は「ためておくリスト」で、メニューから呼び出したときだけ表示する。
+const LISTS = [
+  { id: 'inbox',    name: 'インボックス' },
+  { id: 'today',    name: '今日やる' },
+  { id: 'todo',     name: 'やること' },
+  { id: 'work',     name: '仕事へ転記' },
+  { id: 'chores',   name: '家事' },
+  { id: 'shopping', name: '通販で買う' },
+  { id: 'someday',  name: 'いつかやりたい' },
+  { id: 'cards',    name: '買いたいカード', stock: true },
+  { id: 'books',    name: '読みたい本', stock: true },
+  { id: 'movies',   name: '見たい映画', stock: true },
+  { id: 'recipes',  name: '作りたいご飯', stock: true },
+  { id: 'places',   name: '行った店', stock: true },
+];
+const LIST_BY_ID = new Map(LISTS.map(l => [l.id, l]));
+// 1件表示で順に出すリスト
+const FOCUS_LISTS = ['today', 'todo'];
+// 古い順(=後回しにしたものが後ろ)で並べるリスト。それ以外は新しい順。
+const QUEUE_LISTS = new Set(['today', 'todo']);
+
+/* =========================================================
+ * 状態
+ * ======================================================= */
+const state = {
+  items: new Map(),     // id -> item
+  pending: {},          // id -> 端末内での変更回数(未送信の印)
+  settings: { ...DEFAULT_SETTINGS },
+  token: '',
+  sync: { lastSyncAt: null, lastError: null },
+  syncing: false,
+  offline: !navigator.onLine,
+};
+
+/* =========================================================
+ * 小物
+ * ======================================================= */
+const $ = sel => document.querySelector(sel);
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function listName(id) {
+  const l = LIST_BY_ID.get(id);
+  return l ? l.name : String(id || '(なし)');
+}
+function uuid() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+function parseTime(s) {
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? 0 : t;
+}
+// 端末のタイムゾーン付き ISO 8601 文字列(例: 2026-10-15T09:00:00+09:00)
+function formatTime(ms) {
+  const d = new Date(ms);
+  const p = n => String(Math.abs(n)).padStart(2, '0');
+  const off = -d.getTimezoneOffset();
+  const sign = off >= 0 ? '+' : '-';
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}` +
+    `${sign}${p(Math.trunc(off / 60))}:${p(off % 60)}`;
+}
+// 秒単位で、直前の updated_at(と minMs)より必ず新しい時刻を返す
+function nextStamp(prev, minMs = 0) {
+  let t = Math.floor(Date.now() / 1000) * 1000;
+  const p = Math.max(prev ? parseTime(prev) : 0, minMs);
+  if (t <= p) t = Math.floor(p / 1000) * 1000 + 1000;
+  return formatTime(t);
+}
+function firstLine(text) {
+  const line = String(text || '').split('\n').find(l => l.trim()) || '';
+  return line.trim() || '(本文なし)';
+}
+function restLines(text) {
+  const lines = String(text || '').split('\n');
+  const i = lines.findIndex(l => l.trim());
+  return i < 0 ? '' : lines.slice(i + 1).join('\n').trim();
+}
+function shortDate(due) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(due || '');
+  return m ? `${Number(m[2])}/${Number(m[3])}` : String(due);
+}
+function displayTime(iso) {
+  const t = parseTime(iso);
+  if (!t) return '—';
+  const d = new Date(t);
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+function parseTags(s) {
+  return String(s || '').split(/[,、，]/).map(t => t.trim()).filter(Boolean);
+}
+
+/* =========================================================
+ * IndexedDB(端末内保存)
+ * ======================================================= */
+let dbPromise = null;
+function openDB() {
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('items')) db.createObjectStore('items', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  return dbPromise;
+}
+// fn(tx) の中で行った書き込みが確定したら解決する
+async function withTx(stores, mode, fn) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(stores, mode);
+    let result;
+    tx.oncomplete = () => resolve(result);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error('保存が中断されました'));
+    result = fn(tx);
+  });
+}
+function reqP(req) {
+  return new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
+}
+async function loadAll() {
+  const db = await openDB();
+  const tx = db.transaction(['items', 'meta'], 'readonly');
+  const [items, pending, settings, token, sync] = await Promise.all([
+    reqP(tx.objectStore('items').getAll()),
+    reqP(tx.objectStore('meta').get('pending')),
+    reqP(tx.objectStore('meta').get('settings')),
+    reqP(tx.objectStore('meta').get('token')),
+    reqP(tx.objectStore('meta').get('sync')),
+  ]);
+  state.items = new Map(items.map(i => [i.id, i]));
+  state.pending = pending || {};
+  state.settings = { ...DEFAULT_SETTINGS, ...(settings || {}) };
+  state.token = token || '';
+  state.sync = { lastSyncAt: null, lastError: null, ...(sync || {}) };
+}
+function putMeta(key, value) {
+  return withTx(['meta'], 'readwrite', tx => { tx.objectStore('meta').put(value, key); });
+}
+
+/* =========================================================
+ * 項目の追加・変更(端末内に保存した時点で完了)
+ * ======================================================= */
+async function saveLocal(items) {
+  // メモリ上の状態を先に更新してから、まとめて IndexedDB に書く
+  for (const it of items) {
+    state.items.set(it.id, it);
+    state.pending[it.id] = (state.pending[it.id] || 0) + 1;
+  }
+  const pendingCopy = { ...state.pending };
+  try {
+    await withTx(['items', 'meta'], 'readwrite', tx => {
+      const s = tx.objectStore('items');
+      for (const it of items) s.put(it);
+      tx.objectStore('meta').put(pendingCopy, 'pending');
+    });
+  } catch (e) {
+    showToast('端末への保存に失敗しました: ' + (e && e.message || e));
+    throw e;
+  } finally {
+    render();
+  }
+  scheduleSync(1500);
+}
+function newItem(text, list = 'inbox') {
+  const ts = nextStamp(null);
+  return {
+    id: uuid(), text, note: '', list, tags: [], status: 'open', due: null,
+    created_at: ts, updated_at: ts, deleted: false,
+  };
+}
+async function addItem(text, list = 'inbox') {
+  const t = String(text || '').replace(/\r\n?/g, '\n').trim();
+  if (!t) return null;
+  const it = newItem(t, list);
+  await saveLocal([it]);
+  return it;
+}
+async function updateItem(id, changes, minMs = 0) {
+  const old = state.items.get(id);
+  if (!old) return null;
+  const it = { ...old, ...changes, updated_at: nextStamp(old.updated_at, minMs) };
+  await saveLocal([it]);
+  return it;
+}
+
+/* =========================================================
+ * 表示用の抽出
+ * ======================================================= */
+function visibleItems() {
+  return [...state.items.values()].filter(i => !i.deleted);
+}
+function openItemsOf(list) {
+  const arr = visibleItems().filter(i => i.status === 'open' && i.list === list);
+  if (QUEUE_LISTS.has(list)) arr.sort((a, b) => parseTime(a.updated_at) - parseTime(b.updated_at) || String(a.created_at).localeCompare(String(b.created_at)));
+  else arr.sort((a, b) => parseTime(b.created_at) - parseTime(a.created_at));
+  return arr;
+}
+function focusQueue() {
+  return FOCUS_LISTS.flatMap(l => openItemsOf(l));
+}
+function closedItems() {
+  return visibleItems().filter(i => i.status !== 'open')
+    .sort((a, b) => parseTime(b.updated_at) - parseTime(a.updated_at));
+}
+function unknownListIds() {
+  const ids = new Set();
+  for (const i of visibleItems()) if (i.status === 'open' && !LIST_BY_ID.has(i.list)) ids.add(i.list);
+  return [...ids];
+}
+
+/* =========================================================
+ * 画面の描画
+ * ======================================================= */
+let route = { view: 'home', arg: null };
+
+function rowHtml(it, { showList = false } = {}) {
+  const done = it.status !== 'open';
+  const meta = [];
+  if (showList) meta.push(esc(listName(it.list)));
+  if (it.status === 'archived') meta.push('アーカイブ');
+  if (it.due) meta.push('期限 ' + esc(shortDate(it.due)));
+  for (const t of (Array.isArray(it.tags) ? it.tags : [])) meta.push(`<span class="tag">${esc(t)}</span>`);
+  if (it.note) meta.push('メモあり');
+  return `<li class="row${done ? ' done' : ''}" data-id="${esc(it.id)}">
+    <button type="button" class="check${done ? ' is-done' : ''}" data-action="${done ? 'reopen' : 'done'}" aria-label="${done ? '未完了に戻す' : '完了にする'}"></button>
+    <button type="button" class="row-body" data-action="edit">
+      <div class="row-title">${esc(firstLine(it.text))}</div>
+      ${meta.length ? `<div class="row-meta">${meta.join('')}</div>` : ''}
+    </button>
+  </li>`;
+}
+
+function renderHome() {
+  const inboxCount = openItemsOf('inbox').length;
+  const queue = focusQueue();
+  const today = openItemsOf('today');
+  const head = queue[0];
+
+  let focus;
+  if (head) {
+    const note = [restLines(head.text), head.note].filter(Boolean).join('\n');
+    focus = `<div class="focus-card" data-id="${esc(head.id)}">
+      <div class="focus-meta"><span>${esc(listName(head.list))}${head.due ? ' ・ 期限 ' + esc(shortDate(head.due)) : ''}</span><span>残り ${queue.length} 件</span></div>
+      <button type="button" class="focus-title" data-action="edit">${esc(firstLine(head.text))}</button>
+      ${note ? `<div class="focus-note">${esc(note)}</div>` : ''}
+      <div class="focus-actions">
+        <button type="button" class="btn" data-action="later"${queue.length < 2 ? ' disabled' : ''}>後回し</button>
+        <button type="button" class="btn btn-primary" data-action="done">完了</button>
+      </div>
+    </div>`;
+  } else {
+    focus = `<div class="focus-card"><p class="empty">「今日やる」「やること」は空です。<br>インボックスの項目を振り分けると、ここに1件ずつ表示されます。</p></div>`;
+  }
+
+  $('#home-dynamic').innerHTML = `
+    <a class="inbox-link" href="#/list/inbox" data-nav>
+      <span>インボックス</span>
+      <span><span class="count${inboxCount ? '' : ' zero'}">${inboxCount ? inboxCount + ' 件' : '空です'}</span><span class="chev">›</span></span>
+    </a>
+    <h2 class="section-title">1件表示</h2>
+    ${focus}
+    <h2 class="section-title">今日やる(${today.length})</h2>
+    ${today.length ? `<ul class="rows">${today.map(i => rowHtml(i)).join('')}</ul>` : '<p class="empty">今日やることはありません。</p>'}
+  `;
+}
+
+const listShowDone = new Set();
+function renderList(id) {
+  const items = openItemsOf(id);
+  const doneItems = visibleItems().filter(i => i.list === id && i.status !== 'open')
+    .sort((a, b) => parseTime(b.updated_at) - parseTime(a.updated_at));
+  const showDone = listShowDone.has(id);
+  $('#list-capture-hint').textContent = `「${listName(id)}」に入ります`;
+  $('#list-dynamic').innerHTML = `
+    <h2 class="section-title">${esc(listName(id))}(${items.length})</h2>
+    ${items.length ? `<ul class="rows">${items.map(i => rowHtml(i)).join('')}</ul>` : '<p class="empty">項目はありません。</p>'}
+    ${doneItems.length ? `<button type="button" class="toggle-done" data-action="toggle-list-done">${showDone ? '完了済みを隠す' : `完了済みを表示(${doneItems.length})`}</button>` : ''}
+    ${showDone && doneItems.length ? `<ul class="rows" style="margin-top:8px">${doneItems.map(i => rowHtml(i)).join('')}</ul>` : ''}
+  `;
+}
+
+function renderMenu() {
+  const count = id => openItemsOf(id).length;
+  const link = (id, name) => `<li><a href="#/list/${encodeURIComponent(id)}" data-nav><span>${esc(name)}</span><span class="n">${count(id)} ›</span></a></li>`;
+  const unknown = unknownListIds();
+  $('#view-menu').innerHTML = `
+    <h2 class="section-title" style="margin-top:8px">リスト</h2>
+    <ul class="menu-list">${LISTS.filter(l => !l.stock).map(l => link(l.id, l.name)).join('')}</ul>
+    <h2 class="section-title">ためておくリスト</h2>
+    <ul class="menu-list">${LISTS.filter(l => l.stock).map(l => link(l.id, l.name)).join('')}</ul>
+    ${unknown.length ? `<h2 class="section-title">その他のリスト</h2><ul class="menu-list">${unknown.map(id => link(id, id)).join('')}</ul>` : ''}
+    <h2 class="section-title">その他</h2>
+    <ul class="menu-list">
+      <li><a href="#/done" data-nav><span>完了済み</span><span class="n">${closedItems().length} ›</span></a></li>
+      <li><a href="#/settings" data-nav><span>設定・同期</span><span class="n">›</span></a></li>
+    </ul>`;
+}
+
+function renderDone() {
+  const items = closedItems();
+  $('#view-done').innerHTML = `
+    <h2 class="section-title" style="margin-top:8px">完了済み(${items.length})</h2>
+    ${items.length ? `<ul class="rows">${items.slice(0, 300).map(i => rowHtml(i, { showList: true })).join('')}</ul>` : '<p class="empty">完了済みの項目はありません。</p>'}
+    ${items.length > 300 ? '<p class="empty">新しい順に 300 件まで表示しています。</p>' : ''}`;
+}
+
+function syncSummary() {
+  const n = Object.keys(state.pending).length;
+  if (!syncConfigured()) return { key: 'local', label: '端末内のみ', detail: 'GitHub との同期は設定されていません。データはこの端末の中だけに保存されています。' };
+  if (state.syncing) return { key: 'syncing', label: '同期中', detail: '同期しています…' };
+  if (state.sync.lastError) return { key: 'error', label: 'エラー', detail: state.sync.lastError };
+  if (n > 0) return { key: state.offline ? 'offline' : 'pending', label: `未送信 ${n}`, detail: `未送信の変更が ${n} 件あります。${state.offline ? '通信できるようになったら自動で送信します。' : 'まもなく送信します。'}` };
+  return { key: 'synced', label: '同期済み', detail: '同期済みです。' };
+}
+
+function renderSyncChip() {
+  const s = syncSummary();
+  const chip = $('#sync-chip');
+  chip.dataset.state = s.key;
+  $('#sync-label').textContent = s.label;
+  chip.title = s.detail;
+}
+
+function renderSettingsStatus() {
+  const s = syncSummary();
+  const pendingN = Object.keys(state.pending).length;
+  $('#settings-status').innerHTML = `
+    <p class="status-line${s.key === 'error' ? ' err' : ''}">${esc(s.detail)}</p>
+    <p class="status-line">最後に同期した時刻: ${state.sync.lastSyncAt ? esc(displayTime(state.sync.lastSyncAt)) : 'まだありません'}</p>
+    <p class="status-line">端末内の項目: ${visibleItems().length} 件 / 未送信: ${pendingN} 件</p>
+    ${syncConfigured() ? `<div class="btn-row" style="margin-top:12px"><button class="btn" type="button" data-action="sync-now"${state.syncing ? ' disabled' : ''}>今すぐ同期</button></div>` : ''}`;
+  $('#token-note').textContent = state.token
+    ? 'トークンは設定済みです(安全のため表示しません)。変更するときだけ入力してください。'
+    : 'まだ設定されていません。';
+  $('#token-clear').hidden = !state.token;
+}
+
+function fillSettingsForm() {
+  $('#set-owner').value = state.settings.owner;
+  $('#set-repo').value = state.settings.repo;
+  $('#set-branch').value = state.settings.branch;
+  $('#set-path').value = state.settings.path;
+  $('#set-token').value = '';
+  $('#about').innerHTML = `バージョン ${esc(APP_VERSION)}(データ形式 ${SCHEMA_VERSION})<br>
+    データはまずこの端末(IndexedDB)に保存され、同期を設定している場合は通信できるときに GitHub へ送られます。`;
+}
+
+function render() {
+  renderSyncChip();
+  switch (route.view) {
+    case 'home': renderHome(); break;
+    case 'list': renderList(route.arg); break;
+    case 'menu': renderMenu(); break;
+    case 'done': renderDone(); break;
+    case 'settings': renderSettingsStatus(); break;
+  }
+}
+
+/* =========================================================
+ * 画面の切り替え(URL の # で管理)
+ * ======================================================= */
+let inAppNavs = 0;
+function parseRoute() {
+  const parts = (location.hash.replace(/^#/, '') || '/').split('/').filter(Boolean);
+  const view = parts[0] || 'home';
+  if (view === 'list' && parts[1]) return { view: 'list', arg: decodeURIComponent(parts[1]) };
+  if (['menu', 'done', 'settings'].includes(view)) return { view, arg: null };
+  return { view: 'home', arg: null };
+}
+function applyRoute() {
+  const prev = route;
+  route = parseRoute();
+  for (const v of ['home', 'list', 'menu', 'done', 'settings']) $('#view-' + v).hidden = v !== route.view;
+  const titles = { home: '投げ込み', menu: 'メニュー', done: '完了済み', settings: '設定・同期' };
+  $('#title').textContent = route.view === 'list' ? listName(route.arg) : titles[route.view];
+  const nav = $('#nav-btn');
+  if (route.view === 'home') { nav.textContent = '☰'; nav.setAttribute('aria-label', 'メニュー'); }
+  else { nav.textContent = '‹'; nav.setAttribute('aria-label', '戻る'); }
+  if (route.view === 'settings' && prev.view !== 'settings') fillSettingsForm();
+  if (route.view === 'list' && (prev.view !== 'list' || prev.arg !== route.arg)) {
+    $('#list-capture-text').value = '';
+    $('#list-capture-btn').disabled = true;
+  }
+  render();
+  window.scrollTo(0, 0);
+}
+function go(hash) {
+  if (location.hash === hash) return;
+  inAppNavs++;
+  location.hash = hash;
+}
+function goBack() {
+  if (inAppNavs > 0) { inAppNavs--; history.back(); }
+  else location.replace('#/');
+}
+
+/* =========================================================
+ * 編集ダイアログ
+ * ======================================================= */
+let editing = null; // { id, initial: {...} }
+function openEditor(id) {
+  const it = state.items.get(id);
+  if (!it) return;
+  const sel = $('#edit-list');
+  const opts = LISTS.map(l => `<option value="${esc(l.id)}">${esc(l.name)}${l.stock ? '(ためておく)' : ''}</option>`);
+  if (!LIST_BY_ID.has(it.list)) opts.push(`<option value="${esc(it.list)}">${esc(it.list)}</option>`);
+  sel.innerHTML = opts.join('');
+  const initial = {
+    text: it.text || '',
+    note: it.note || '',
+    list: it.list,
+    due: it.due ? String(it.due).slice(0, 10) : '',
+    tags: (Array.isArray(it.tags) ? it.tags : []).join('、'),
+  };
+  $('#edit-text').value = initial.text;
+  $('#edit-note').value = initial.note;
+  sel.value = initial.list;
+  $('#edit-due').value = initial.due;
+  $('#edit-tags').value = initial.tags;
+  $('#edit-toggle-done').textContent = it.status === 'open' ? '完了にする' : '未完了に戻す';
+  $('#edit-info').innerHTML = `作成: ${esc(displayTime(it.created_at))}<br>更新: ${esc(displayTime(it.updated_at))}`;
+  editing = { id, initial };
+  const dlg = $('#edit-dialog');
+  if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+}
+function closeEditor() {
+  editing = null;
+  const dlg = $('#edit-dialog');
+  if (dlg.open) { if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open'); }
+}
+// 利用者が変えた欄だけを取り出す(同期で裏から届いた変更を上書きしないため)
+function collectEdits() {
+  const { initial } = editing;
+  const cur = {
+    text: $('#edit-text').value.replace(/\r\n?/g, '\n'),
+    note: $('#edit-note').value.replace(/\r\n?/g, '\n'),
+    list: $('#edit-list').value,
+    due: $('#edit-due').value,
+    tags: $('#edit-tags').value,
+  };
+  const ch = {};
+  if (cur.text !== initial.text) ch.text = cur.text.trim();
+  if (cur.note !== initial.note) ch.note = cur.note;
+  if (cur.list !== initial.list) ch.list = cur.list;
+  if (cur.due !== initial.due) ch.due = cur.due || null;
+  if (cur.tags !== initial.tags) ch.tags = parseTags(cur.tags);
+  return ch;
+}
+async function saveEditor() {
+  if (!editing) return;
+  const ch = collectEdits();
+  if ('text' in ch && !ch.text) { showToast('本文を入力してください'); return; }
+  const id = editing.id;
+  closeEditor();
+  if (Object.keys(ch).length) {
+    await updateItem(id, ch);
+    showToast('保存しました');
+  }
+}
+
+/* =========================================================
+ * トースト
+ * ======================================================= */
+let toastTimer = null;
+function showToast(msg, action) {
+  const el = $('#toast');
+  $('#toast-msg').textContent = msg;
+  const btn = $('#toast-action');
+  if (action) {
+    btn.hidden = false;
+    btn.textContent = action.label;
+    btn.onclick = () => { el.hidden = true; action.fn(); };
+  } else {
+    btn.hidden = true;
+    btn.onclick = null;
+  }
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, action ? 5000 : 2500);
+}
+
+/* =========================================================
+ * 操作
+ * ======================================================= */
+async function markDone(id) {
+  const prev = state.items.get(id);
+  if (!prev) return;
+  await updateItem(id, { status: 'done' });
+  showToast('完了にしました', { label: '元に戻す', fn: () => updateItem(id, { status: 'open' }) });
+}
+async function reopen(id) {
+  await updateItem(id, { status: 'open' });
+  showToast('未完了に戻しました');
+}
+async function later(id) {
+  // 項目の中身は変えず、updated_at を同じリストのどの項目よりも新しくして、表示順の最後へ回す
+  const it = state.items.get(id);
+  if (!it) return;
+  const latest = Math.max(0, ...openItemsOf(it.list).filter(i => i.id !== id).map(i => parseTime(i.updated_at)));
+  await updateItem(id, {}, latest);
+  showToast('後回しにしました');
+}
+async function removeItem(id) {
+  if (!confirm('この項目を削除しますか?')) return;
+  closeEditor();
+  await updateItem(id, { deleted: true });
+  showToast('削除しました', { label: '元に戻す', fn: () => updateItem(id, { deleted: false }) });
+}
+
+function bindEvents() {
+  // 投げ込み欄
+  const cap = $('#capture-text'), capBtn = $('#capture-btn');
+  const autoGrow = ta => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight + 2, window.innerHeight * 0.4) + 'px'; };
+  cap.addEventListener('input', () => { capBtn.disabled = !cap.value.trim(); autoGrow(cap); });
+  $('#capture-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const text = cap.value;
+    if (!text.trim()) return;
+    cap.value = ''; capBtn.disabled = true; autoGrow(cap);
+    try { await addItem(text, 'inbox'); showToast('インボックスに追加しました'); }
+    catch { cap.value = text; capBtn.disabled = false; }
+    cap.focus();
+  });
+  const lcap = $('#list-capture-text'), lcapBtn = $('#list-capture-btn');
+  lcap.addEventListener('input', () => { lcapBtn.disabled = !lcap.value.trim(); autoGrow(lcap); });
+  $('#list-capture-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const text = lcap.value;
+    if (!text.trim() || route.view !== 'list') return;
+    lcap.value = ''; lcapBtn.disabled = true; autoGrow(lcap);
+    try { await addItem(text, route.arg); showToast('追加しました'); }
+    catch { lcap.value = text; lcapBtn.disabled = false; }
+  });
+  // PC では Ctrl/⌘ + Enter で追加(スマホの Enter は改行・変換確定に使う)
+  for (const [ta, form] of [[cap, '#capture-form'], [lcap, '#list-capture-form']]) {
+    ta.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.isComposing) { e.preventDefault(); $(form).requestSubmit(); }
+    });
+  }
+
+  // 画面内のボタン(委譲)
+  document.addEventListener('click', e => {
+    const nav = e.target.closest('a[data-nav]');
+    if (nav) { e.preventDefault(); go(nav.getAttribute('href')); return; }
+    const btn = e.target.closest('[data-action]');
+    if (!btn || btn.disabled) return;
+    const holder = btn.closest('[data-id]');
+    const id = holder && holder.dataset.id;
+    switch (btn.dataset.action) {
+      case 'done': if (id) markDone(id); break;
+      case 'reopen': if (id) reopen(id); break;
+      case 'later': if (id) later(id); break;
+      case 'edit': if (id) openEditor(id); break;
+      case 'toggle-list-done':
+        if (listShowDone.has(route.arg)) listShowDone.delete(route.arg); else listShowDone.add(route.arg);
+        render(); break;
+      case 'sync-now': syncNow(true); break;
+    }
+  });
+
+  $('#nav-btn').addEventListener('click', () => { if (route.view === 'home') go('#/menu'); else goBack(); });
+  $('#sync-chip').addEventListener('click', () => go('#/settings'));
+  window.addEventListener('hashchange', applyRoute);
+
+  // 編集ダイアログ
+  $('#edit-form').addEventListener('submit', e => { e.preventDefault(); saveEditor(); });
+  $('#edit-cancel').addEventListener('click', closeEditor);
+  $('#edit-dialog').addEventListener('cancel', e => { e.preventDefault(); closeEditor(); });
+  $('#edit-toggle-done').addEventListener('click', async () => {
+    if (!editing) return;
+    const id = editing.id;
+    const ch = collectEdits();
+    const it = state.items.get(id);
+    closeEditor();
+    if (it.status === 'open') {
+      if (Object.keys(ch).length) await updateItem(id, ch);
+      await markDone(id);
+    } else {
+      await updateItem(id, { ...ch, status: 'open' });
+      showToast('未完了に戻しました');
+    }
+  });
+  $('#edit-delete').addEventListener('click', () => { if (editing) removeItem(editing.id); });
+
+  // 設定
+  $('#settings-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const settings = {
+      owner: $('#set-owner').value.trim(),
+      repo: $('#set-repo').value.trim(),
+      branch: $('#set-branch').value.trim() || DEFAULT_SETTINGS.branch,
+      path: $('#set-path').value.trim().replace(/^\/+/, '') || DEFAULT_SETTINGS.path,
+    };
+    // 「持ち主/名前」をまとめて貼り付けた場合にも対応
+    const m = /^(?:https?:\/\/github\.com\/)?([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/.exec(settings.repo);
+    if (m && !settings.owner) { settings.owner = m[1]; settings.repo = m[2]; }
+    else if (m && m[1] === settings.owner) settings.repo = m[2];
+    const tokenInput = $('#set-token').value.trim();
+    if (!settings.owner || !settings.repo) { showToast('リポジトリの持ち主と名前を入力してください'); return; }
+    if (!/^[A-Za-z0-9-]+$/.test(settings.owner) || !/^[A-Za-z0-9._-]+$/.test(settings.repo)) {
+      showToast('リポジトリの持ち主・名前に使えない文字が含まれています'); return;
+    }
+    if (!tokenInput && !state.token) { showToast('アクセストークンを入力してください'); return; }
+    const changedTarget = ['owner', 'repo', 'branch', 'path'].some(k => settings[k] !== state.settings[k]);
+    state.settings = settings;
+    if (tokenInput) state.token = tokenInput;
+    state.sync.lastError = null;
+    if (changedTarget) state.sync.lastSyncAt = null;
+    await withTx(['meta'], 'readwrite', tx => {
+      const s = tx.objectStore('meta');
+      s.put(settings, 'settings');
+      s.put(state.token, 'token');
+      s.put(state.sync, 'sync');
+    });
+    fillSettingsForm();
+    render();
+    syncNow(true);
+  });
+  $('#token-clear').addEventListener('click', async () => {
+    if (!confirm('この端末からアクセストークンを削除しますか?\n(端末内のデータは消えません。同期だけが止まります)')) return;
+    state.token = '';
+    state.sync.lastError = null;
+    await withTx(['meta'], 'readwrite', tx => { tx.objectStore('meta').put('', 'token'); tx.objectStore('meta').put(state.sync, 'sync'); });
+    render();
+    showToast('トークンを削除しました');
+  });
+
+  // 同期のきっかけ
+  window.addEventListener('online', () => { state.offline = false; render(); scheduleSync(500); });
+  window.addEventListener('offline', () => { state.offline = true; render(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleSync(500); });
+  setInterval(() => { if (document.visibilityState === 'visible') scheduleSync(0); }, 5 * 60 * 1000);
+}
+
+/* =========================================================
+ * GitHub との同期
+ * ======================================================= */
+class SyncError extends Error {}
+class ConflictError extends Error {}
+
+function syncConfigured() {
+  return !!(state.token && state.settings.owner && state.settings.repo);
+}
+function utf8ToBase64(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+function base64ToUtf8(b64) {
+  const bin = atob(String(b64).replace(/\s/g, ''));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+function repoPath() {
+  const { owner, repo } = state.settings;
+  return `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+}
+function contentsPath() {
+  return repoPath() + '/contents/' + state.settings.path.split('/').map(encodeURIComponent).join('/');
+}
+async function gh(path, opts = {}) {
+  let res;
+  try {
+    res = await fetch(API + path, {
+      ...opts,
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: 'Bearer ' + state.token,
+        ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+      },
+    });
+  } catch (e) {
+    const err = new SyncError('通信できませんでした');
+    err.network = true;
+    throw err;
+  }
+  return res;
+}
+async function errorFrom(res, what) {
+  let msg = '';
+  try { msg = (await res.json()).message || ''; } catch { /* 本文なし */ }
+  if (res.status === 401) return new SyncError('アクセストークンが無効か、期限切れです。設定画面で入れ直してください。');
+  if (res.status === 403 && /rate limit/i.test(msg)) return new SyncError('GitHub の利用回数の上限に達しました。しばらく待ってから再度お試しください。');
+  if (res.status === 403) return new SyncError('アクセストークンに、データ用リポジトリへの書き込み権限(Contents: Read and write)がありません。');
+  if (res.status === 404) return new SyncError('リポジトリが見つかりません。持ち主・名前・ブランチを確認し、トークンがそのリポジトリを対象にしているか確認してください。');
+  return new SyncError(`${what}に失敗しました(${res.status}${msg ? ': ' + msg : ''})`);
+}
+// 1. GitHub から最新の items.json を取得する
+async function fetchRemote() {
+  const ref = encodeURIComponent(state.settings.branch);
+  const res = await gh(`${contentsPath()}?ref=${ref}`);
+  if (res.status === 404) {
+    // ファイルが無いのか、リポジトリ自体に届かないのかを確かめる
+    const repoRes = await gh(repoPath());
+    if (!repoRes.ok) throw await errorFrom(repoRes, 'リポジトリの確認');
+    return { sha: null, doc: { schema_version: SCHEMA_VERSION, items: [] } };
+  }
+  if (!res.ok) throw await errorFrom(res, 'データの取得');
+  const meta = await res.json();
+  if (Array.isArray(meta) || meta.type !== 'file') throw new SyncError(`「${state.settings.path}」はファイルではありません。設定のファイル名を確認してください。`);
+  let b64 = meta.content;
+  if (meta.encoding !== 'base64' || !b64) {
+    // 1MB を超えるファイルは内容が省かれるため、blob として取り直す
+    const bres = await gh(`${repoPath()}/git/blobs/${meta.sha}`);
+    if (!bres.ok) throw await errorFrom(bres, 'データの取得');
+    b64 = (await bres.json()).content;
+  }
+  let doc;
+  try { doc = JSON.parse(base64ToUtf8(b64) || '{}'); }
+  catch { throw new SyncError(`GitHub 上の「${state.settings.path}」が JSON として読めません。手で編集した場合は書式を確認してください。`); }
+  return { sha: meta.sha, doc: migrate(doc) };
+}
+// データの形を変えたときは、ここに古い形から新しい形への変換を追加する
+function migrate(doc) {
+  if (!doc || typeof doc !== 'object') throw new SyncError('GitHub 上のデータの形式が正しくありません。');
+  const v = doc.schema_version ?? 1;
+  if (v > SCHEMA_VERSION) throw new SyncError(`GitHub 上のデータは新しい形式(${v})です。アプリを最新版に更新してください。`);
+  if (!Array.isArray(doc.items)) {
+    if (doc.items === undefined) doc.items = [];
+    else throw new SyncError('GitHub 上のデータに items の一覧がありません。');
+  }
+  doc.items = doc.items.filter(i => i && typeof i === 'object' && typeof i.id === 'string' && i.id);
+  doc.schema_version = SCHEMA_VERSION;
+  return doc;
+}
+// 2〜4. 項目ごと(id 単位)に突き合わせ、updated_at が新しいほうを採用。片方にしかない項目は残す
+function mergeItems(localArr, remoteArr) {
+  const merged = new Map();
+  for (const r of remoteArr) merged.set(r.id, r);
+  let toRemote = 0;
+  for (const l of localArr) {
+    const r = merged.get(l.id);
+    if (!r || parseTime(l.updated_at) > parseTime(r.updated_at)) { merged.set(l.id, l); toRemote++; }
+  }
+  return { merged: [...merged.values()], toRemote };
+}
+// 5. 統合結果を GitHub に書き込む
+async function putRemote(doc, items, sha, changed) {
+  const sorted = [...items].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)) || a.id.localeCompare(b.id));
+  const out = { ...doc, schema_version: SCHEMA_VERSION, items: sorted };
+  const body = {
+    message: sha ? `アプリから同期: ${changed} 件の変更` : `アプリから同期: ${state.settings.path} を作成`,
+    content: utf8ToBase64(JSON.stringify(out, null, 2) + '\n'),
+    branch: state.settings.branch,
+  };
+  if (sha) body.sha = sha;
+  const res = await gh(contentsPath(), { method: 'PUT', body: JSON.stringify(body) });
+  if (res.status === 409) throw new ConflictError('conflict');
+  if (res.status === 422) {
+    let msg = '';
+    try { msg = (await res.clone().json()).message || ''; } catch { /* 本文なし */ }
+    if (/sha/i.test(msg)) throw new ConflictError('conflict');
+  }
+  if (!res.ok) throw await errorFrom(res, 'データの書き込み');
+}
+// 統合結果を端末内に反映する。同期中に端末で変更された項目は、より新しいので残す
+async function applyMerged(merged, pendingSnap) {
+  const toWrite = [];
+  for (const it of merged) {
+    const cur = state.items.get(it.id);
+    if (!cur || parseTime(it.updated_at) > parseTime(cur.updated_at)) toWrite.push(it);
+  }
+  for (const it of toWrite) state.items.set(it.id, it);
+  for (const [id, rev] of Object.entries(pendingSnap)) {
+    if (state.pending[id] === rev) delete state.pending[id];
+  }
+  const pendingCopy = { ...state.pending };
+  await withTx(['items', 'meta'], 'readwrite', tx => {
+    const s = tx.objectStore('items');
+    for (const it of toWrite) s.put(it);
+    tx.objectStore('meta').put(pendingCopy, 'pending');
+  });
+}
+async function syncOnce() {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const pendingSnap = { ...state.pending };
+    const remote = await fetchRemote();
+    const { merged, toRemote } = mergeItems([...state.items.values()], remote.doc.items);
+    if (toRemote > 0 || !remote.sha) {
+      try {
+        await putRemote(remote.doc, merged, remote.sha, toRemote);
+      } catch (e) {
+        if (e instanceof ConflictError) continue; // 書き込みの競合: 1 からやり直す
+        throw e;
+      }
+    }
+    await applyMerged(merged, pendingSnap);
+    return;
+  }
+  throw new SyncError('書き込みの競合が続いたため、同期できませんでした。しばらくしてから再度お試しください。');
+}
+
+let syncTimer = null;
+let syncAgain = false;
+function scheduleSync(delay = 1500) {
+  if (!syncConfigured()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => syncNow(false), delay);
+}
+async function syncNow(manual) {
+  if (!syncConfigured()) return;
+  if (state.syncing) { syncAgain = true; return; }
+  if (!navigator.onLine) {
+    state.offline = true; render();
+    if (manual) showToast('オフラインです。通信できるようになったら自動で同期します。');
+    return;
+  }
+  state.syncing = true;
+  syncAgain = false;
+  render();
+  try {
+    await syncOnce();
+    state.offline = false;
+    state.sync = { lastSyncAt: formatTime(Date.now()), lastError: null };
+    if (manual) showToast('同期しました');
+  } catch (e) {
+    if (e && e.network) {
+      // 通信できないだけならエラーにはせず、未送信として持ち越す
+      state.offline = true;
+      if (manual) showToast('通信できませんでした。あとで自動で同期します。');
+    } else {
+      state.sync = { ...state.sync, lastError: (e && e.message) || String(e) };
+      console.error(e);
+    }
+  } finally {
+    state.syncing = false;
+    try { await putMeta('sync', state.sync); } catch { /* 表示には影響しない */ }
+    render();
+  }
+  if (syncAgain || (Object.keys(state.pending).length && !state.offline && !state.sync.lastError)) scheduleSync(1000);
+}
+
+/* =========================================================
+ * ?add= による投げ込み(音声入力ショートカット用)
+ * ======================================================= */
+async function handleAddParam() {
+  const url = new URL(location.href);
+  if (!url.searchParams.has('add')) return;
+  const text = url.searchParams.get('add') || '';
+  // 再読み込みで二重に追加されないよう、先に URL から取り除く
+  url.searchParams.delete('add');
+  history.replaceState(null, '', url.pathname + (url.search || '') + url.hash);
+  if (!text.trim()) return;
+  try {
+    await addItem(text, 'inbox');
+    showToast('インボックスに追加しました: ' + firstLine(text).slice(0, 30));
+  } catch { /* saveLocal が通知済み */ }
+}
+
+/* =========================================================
+ * 起動
+ * ======================================================= */
+async function start() {
+  bindEvents();
+  try {
+    await loadAll();
+  } catch (e) {
+    showToast('端末内のデータを読み込めませんでした: ' + (e && e.message || e));
+  }
+  applyRoute();
+  await handleAddParam();
+  if (route.view === 'home') $('#capture-text').focus();
+
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service Worker を登録できませんでした', e));
+  // 起動時の同期は表示のあとに裏で行う(通信を待たない)
+  scheduleSync(300);
+}
+start();
+</script>
+</body>
+</html>
