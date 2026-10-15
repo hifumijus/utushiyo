@@ -56,6 +56,10 @@ M = [
  ("タグ: 完了済みも数える", "index.html", "    if (i.status !== 'open') continue;\n", "", "tags"),
  ("タグ: 押しても移らない", "index.html", "      case 'tag': if (btn.dataset.tag) go('#/tag/' + encodeURIComponent(btn.dataset.tag)); break;\n", "", "tags"),
  ("タグ: ほかのタグの項目も出す", "index.html", "i.status === 'open' && Array.isArray(i.tags) && i.tags.includes(tag)", "i.status === 'open'", "tags"),
+ ("絞り込み: 1件表示に反映しない", "index.html", "return f ? filteredQueue(f) : normalQueue();", "return normalQueue();", "search"),
+ ("絞り込み: 後回しで順番が変わらない", "index.html", "setFocusFilter({ ...f, skipped: [...f.skipped.filter(x => x !== id), id] });", "", "search"),
+ ("絞り込み: 後回しでデータを書き換える", "index.html", "if (it.timer_started_at) await updateItem(id, pauseChanges(it)); else render();", "await updateItem(id, pauseChanges(it), Date.now());", "search"),
+ ("絞り込み: 再起動で消える", "index.html", "if (o) localStorage.setItem('focusFilter', JSON.stringify(o)); else", "if (false) localStorage.setItem('focusFilter', JSON.stringify(o)); else", "search"),
  ("オフライン: キャッシュを使わない", "sw.js", "if (cached) {", "if (false) {", "offline"),
  ("トークン: 設定画面に表示してしまう", "index.html", "$('#set-token').value = '';", "$('#set-token').value = state.token;", "sync"),
 ]

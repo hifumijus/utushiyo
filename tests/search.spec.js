@@ -92,3 +92,54 @@ test('当てはまる項目が多いときは10件まで出し、残りは押す
   await page.locator('[data-action=search-all]').click();
   await expect(titles(page)).toHaveCount(13);
 });
+
+test.describe('この条件で1件ずつ片付ける', () => {
+  async function filterOn(page) {
+    await tagChip(page, '家').click();
+    await minChip(page, '5').click();
+    await page.locator('[data-action=focus-filter-on]').click();
+  }
+  const focusTitle = page => page.locator('.focus-title');
+
+  test('1件表示が条件に当てはまる項目だけになり、完了すると次の当てはまる項目へ進む', async ({ page }) => {
+    await setup(page);
+    await filterOn(page);
+    await expect(page.locator('.filter-bar')).toContainText('絞り込み中: 5分以内・家');
+    await expect(page.locator('.focus-meta')).toContainText('残り 2 件');
+    await expect(focusTitle(page)).toHaveText('ゴミ出し'); // 期限の近いものが先
+    await page.locator('.focus-card [data-action=done]').click();
+    await expect(focusTitle(page)).toHaveText('電池');
+    await page.locator('.focus-card [data-action=done]').click();
+    await expect(page.locator('.focus-card')).toContainText('条件に当てはまる項目は残っていません');
+    await page.locator('.focus-card [data-action=focus-filter-off]').click();
+    await expect(page.locator('.filter-bar')).toHaveCount(0);
+    await expect(focusTitle(page)).not.toHaveText(''); // 通常の1件表示に戻る
+  });
+
+  test('後回しは条件の中で順番を後ろへ回すだけで、項目の updated_at は変えない', async ({ page }) => {
+    await setup(page);
+    await filterOn(page);
+    const before = await page.evaluate(() => [...state.items.values()].find(i => i.text === 'ゴミ出し').updated_at);
+    await page.locator('.focus-card [data-action=later]').click();
+    await expect(focusTitle(page)).toHaveText('電池');
+    await page.locator('.focus-card [data-action=later]').click();
+    await expect(focusTitle(page)).toHaveText('ゴミ出し');
+    const after = await page.evaluate(() => [...state.items.values()].find(i => i.text === 'ゴミ出し').updated_at);
+    expect(after).toBe(before);
+  });
+
+  test('絞り込みは再起動後も続き、条件に当てはまらない項目は出てこない', async ({ page }) => {
+    await setup(page);
+    await filterOn(page);
+    await page.reload();
+    await expect(page.locator('.filter-bar')).toContainText('5分以内・家');
+    const seen = [];
+    for (let i = 0; i < 4; i++) {
+      seen.push(await focusTitle(page).textContent());
+      await page.locator('.focus-card [data-action=later]').click();
+    }
+    expect(new Set(seen)).toEqual(new Set(['ゴミ出し', '電池']));
+    await page.locator('.filter-bar [data-action=focus-filter-off]').click();
+    await expect(page.locator('#toast-msg')).toHaveText('絞り込みを解除しました');
+  });
+});
