@@ -106,7 +106,8 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
   border: 0; outline: none; background: transparent; font-size: 17px; line-height: 1.5; padding: 4px 4px;
 }
 .capture-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; }
-.capture-actions .hint { font-size: 12px; color: var(--muted); padding-left: 4px; }
+.split-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding-left: 4px; font-size: 13px; color: var(--muted); }
+.split-toggle input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
 .btn {
   min-height: 44px; padding: 0 18px; border-radius: 12px; border: 1px solid var(--line);
   background: var(--surface); font-weight: 600; font-size: 16px;
@@ -226,9 +227,9 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   <!-- ホーム -->
   <section class="view" id="view-home">
     <form class="capture" id="capture-form" autocomplete="off">
-      <textarea id="capture-text" rows="3" aria-label="投げ込み欄" placeholder="思いついたことを書く" enterkeyhint="enter"></textarea>
+      <textarea id="capture-text" rows="3" aria-label="投げ込み欄" placeholder="思いついたことを書く(インボックスに入ります)" enterkeyhint="enter"></textarea>
       <div class="capture-actions">
-        <span class="hint">インボックスに入ります</span>
+        <label class="split-toggle"><input type="checkbox" class="split-check"> 1行ずつ別の項目にする</label>
         <button class="btn btn-primary" type="submit" id="capture-btn" disabled>追加</button>
       </div>
     </form>
@@ -240,7 +241,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     <form class="capture" id="list-capture-form" autocomplete="off">
       <textarea id="list-capture-text" rows="2" aria-label="このリストに追加" placeholder="このリストに追加" enterkeyhint="enter"></textarea>
       <div class="capture-actions">
-        <span class="hint" id="list-capture-hint"></span>
+        <label class="split-toggle"><input type="checkbox" class="split-check"> 1行ずつ別の項目にする</label>
         <button class="btn btn-primary" type="submit" id="list-capture-btn" disabled>追加</button>
       </div>
     </form>
@@ -335,7 +336,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 /* =========================================================
  * 定数
  * ======================================================= */
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const SCHEMA_VERSION = 1;
 const DB_NAME = 'nagekomi';
 const DB_VERSION = 1;
@@ -530,6 +531,23 @@ async function addItem(text, list = 'inbox') {
   await saveLocal([it]);
   return it;
 }
+// 「1行ずつ別の項目にする」で使う。行頭の箇条書きの印(・ - * • □ 1. など)は取り除く
+function splitLines(text) {
+  return String(text || '').replace(/\r\n?/g, '\n').split('\n')
+    .map(l => l.replace(/^\s*(?:[・•●○◦▪︎■□☐☑✓✔]\s*|[-*+]\s+|\d{1,3}[.)．）](?!\d)\s*)/, '').trim())
+    .filter(Boolean);
+}
+// 複数件をまとめて追加する。並び順を保つため、1件目がいちばん古くなるよう1秒ずつずらす
+async function addItems(texts, list = 'inbox') {
+  const now = Math.floor(Date.now() / 1000) * 1000;
+  const items = texts.map((t, i) => {
+    const it = newItem(t, list);
+    it.created_at = it.updated_at = formatTime(now - (texts.length - 1 - i) * 1000);
+    return it;
+  });
+  if (items.length) await saveLocal(items);
+  return items;
+}
 async function updateItem(id, changes, minMs = 0) {
   const old = state.items.get(id);
   if (!old) return null;
@@ -625,7 +643,7 @@ function renderList(id) {
   const doneItems = visibleItems().filter(i => i.list === id && i.status !== 'open')
     .sort((a, b) => parseTime(b.updated_at) - parseTime(a.updated_at));
   const showDone = listShowDone.has(id);
-  $('#list-capture-hint').textContent = `「${listName(id)}」に入ります`;
+  $('#list-capture-text').placeholder = `「${listName(id)}」に追加`;
   $('#list-dynamic').innerHTML = `
     <h2 class="section-title">${esc(listName(id))}(${items.length})</h2>
     ${items.length ? `<ul class="rows">${items.map(i => rowHtml(i)).join('')}</ul>` : '<p class="empty">項目はありません。</p>'}
@@ -735,6 +753,7 @@ function applyRoute() {
   if (route.view === 'list' && (prev.view !== 'list' || prev.arg !== route.arg)) {
     $('#list-capture-text').value = '';
     $('#list-capture-btn').disabled = true;
+    $('#list-capture-btn').textContent = '追加';
   }
   render();
   window.scrollTo(0, 0);
@@ -863,33 +882,44 @@ async function removeItem(id) {
 }
 
 function bindEvents() {
-  // 投げ込み欄
-  const cap = $('#capture-text'), capBtn = $('#capture-btn');
+  // 投げ込み欄(ホームとリスト画面の2か所)
   const autoGrow = ta => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight + 2, window.innerHeight * 0.4) + 'px'; };
-  cap.addEventListener('input', () => { capBtn.disabled = !cap.value.trim(); autoGrow(cap); });
-  $('#capture-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const text = cap.value;
-    if (!text.trim()) return;
-    cap.value = ''; capBtn.disabled = true; autoGrow(cap);
-    try { await addItem(text, 'inbox'); showToast('インボックスに追加しました'); }
-    catch { cap.value = text; capBtn.disabled = false; }
-    cap.focus();
-  });
-  const lcap = $('#list-capture-text'), lcapBtn = $('#list-capture-btn');
-  lcap.addEventListener('input', () => { lcapBtn.disabled = !lcap.value.trim(); autoGrow(lcap); });
-  $('#list-capture-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const text = lcap.value;
-    if (!text.trim() || route.view !== 'list') return;
-    lcap.value = ''; lcapBtn.disabled = true; autoGrow(lcap);
-    try { await addItem(text, route.arg); showToast('追加しました'); }
-    catch { lcap.value = text; lcapBtn.disabled = false; }
-  });
-  // PC では Ctrl/⌘ + Enter で追加(スマホの Enter は改行・変換確定に使う)
-  for (const [ta, form] of [[cap, '#capture-form'], [lcap, '#list-capture-form']]) {
-    ta.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.isComposing) { e.preventDefault(); $(form).requestSubmit(); }
+  let split = false;
+  try { split = localStorage.getItem('splitLines') === '1'; } catch { /* 使えなくても既定値で動く */ }
+  const forms = [
+    { form: $('#capture-form'), ta: $('#capture-text'), btn: $('#capture-btn'), list: () => 'inbox' },
+    { form: $('#list-capture-form'), ta: $('#list-capture-text'), btn: $('#list-capture-btn'), list: () => route.view === 'list' ? route.arg : null },
+  ];
+  const refresh = f => {
+    const n = split ? splitLines(f.ta.value).length : (f.ta.value.trim() ? 1 : 0);
+    f.btn.disabled = n === 0;
+    f.btn.textContent = n > 1 ? `${n}件追加` : '追加';
+  };
+  for (const f of forms) {
+    const check = f.form.querySelector('.split-check');
+    check.checked = split;
+    check.addEventListener('change', () => {
+      split = check.checked;
+      try { localStorage.setItem('splitLines', split ? '1' : '0'); } catch { /* 保存できなくても動作には影響しない */ }
+      for (const g of forms) { g.form.querySelector('.split-check').checked = split; refresh(g); }
+    });
+    f.ta.addEventListener('input', () => { refresh(f); autoGrow(f.ta); });
+    f.form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const list = f.list();
+      const text = f.ta.value;
+      const texts = split ? splitLines(text) : (text.trim() ? [text] : []);
+      if (!list || !texts.length) return;
+      f.ta.value = ''; refresh(f); autoGrow(f.ta);
+      try {
+        if (texts.length > 1) await addItems(texts, list); else await addItem(texts[0], list);
+        showToast(`${list === 'inbox' ? 'インボックス' : '「' + listName(list) + '」'}に${texts.length > 1 ? ` ${texts.length} 件を` : ''}追加しました`);
+      } catch { f.ta.value = text; refresh(f); }
+      if (list === 'inbox') f.ta.focus();
+    });
+    // PC では Ctrl/⌘ + Enter で追加(スマホの Enter は改行・変換確定に使う)
+    f.ta.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.isComposing) { e.preventDefault(); f.form.requestSubmit(); }
     });
   }
 
