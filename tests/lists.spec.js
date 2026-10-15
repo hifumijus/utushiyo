@@ -42,7 +42,7 @@ test('リストを追加すると、メニュー・ホームの件数・編集�
   await page.locator('#list-capture-btn').click();
   expect((await storedItems(page))[0].list).toBe(l.id);
 
-  await page.goto('#/');
+  await page.goto('#/overview');
   await expect(page.locator('.tile', { hasText: '行きたい場所' }).locator('.num')).toHaveText('1');
   await page.locator('.tile', { hasText: '行きたい場所' }).click();
   await page.locator('#list-dynamic .row-body').first().click();
@@ -55,7 +55,7 @@ test('ためておくリストとして追加すると、メニューのため�
   await page.goto('#/menu');
   const stockSection = page.locator('#view-menu .menu-list').nth(1);
   await expect(stockSection).toContainText('聴きたい音楽');
-  await page.goto('#/');
+  await page.goto('#/overview');
   await expect(page.locator('.tile', { hasText: '聴きたい音楽' })).toHaveCount(0);
 });
 
@@ -80,9 +80,9 @@ test('最初からあるリストの名前を変えても、項目の list の�
   await row(page, '今日やる').locator('[data-action=list-edit]').click();
   await page.locator('#list-name').fill('本日');
   await page.locator('#list-form button[type=submit]').click();
-  await page.goto('#/');
+  await page.goto('#/focus');
   await expect(page.locator('.focus-meta')).toContainText('本日');
-  await expect(page.locator('#home-dynamic .section-title', { hasText: '本日(1)' })).toHaveCount(1); // 見出しも新しい名前
+  await expect(page.locator('#focus-dynamic .section-title', { hasText: '本日(1)' })).toHaveCount(1); // 見出しも新しい名前
   expect((await storedItems(page))[0].list).toBe('today');
   expect((await storedLists(page)).find(l => l.id === 'today').name).toBe('本日');
 });

@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>投げ込み</title>
 <meta name="description" content="思いついたことを素早く投げ込み、あとで整理・実行するためのアプリ">
 <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
@@ -51,7 +51,7 @@
   }
 }
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; touch-action: manipulation; } /* ダブルタップでの拡大を止める */
 body {
   margin: 0;
   background: var(--bg);
@@ -95,7 +95,19 @@ button { cursor: pointer; }
 .sync-chip[data-state="error"] .dot { background: var(--danger); }
 @keyframes pulse { from { opacity: .3; } to { opacity: 1; } }
 
-main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bottom) + 96px); }
+main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bottom) + 110px); }
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(3, 1fr);
+  padding: 4px 8px calc(var(--safe-bottom) + 4px); background: color-mix(in srgb, var(--bg) 94%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-top: 1px solid var(--line);
+}
+.tabbar a {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; min-height: 50px;
+  color: var(--muted); text-decoration: none; font-size: 11px; border-radius: 12px;
+}
+.tabbar a .ti { font-size: 20px; line-height: 1.2; }
+.tabbar a.on { color: var(--accent); font-weight: 700; }
+.tabbar[hidden] { display: none; }
 .view[hidden] { display: none; }
 .section-title { margin: 20px 4px 6px; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
 
@@ -273,7 +285,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 
 /* トースト */
 .toast {
-  position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 20px); transform: translateX(-50%);
+  position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 72px); transform: translateX(-50%);
   z-index: 50; max-width: calc(100% - 32px); display: flex; align-items: center; gap: 12px;
   background: var(--text); color: var(--bg); border-radius: 12px; padding: 10px 10px 10px 16px;
   font-size: 15px; box-shadow: 0 6px 24px rgba(0,0,0,.2);
@@ -311,6 +323,12 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     </form>
     <div id="home-dynamic"></div>
   </section>
+
+  <!-- 1件表示と絞り込み -->
+  <section class="view" id="view-focus" hidden><div id="focus-dynamic"></div></section>
+
+  <!-- リスト確認 -->
+  <section class="view" id="view-overview" hidden></section>
 
   <!-- リスト -->
   <section class="view" id="view-list" hidden>
@@ -397,6 +415,13 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   </section>
 </main>
 
+<!-- 画面下のタブ -->
+<nav class="tabbar" id="tabbar" aria-label="画面の切り替え">
+  <a href="#/" data-tab="home"><span class="ti">✎</span><span>投げ込み</span></a>
+  <a href="#/focus" data-tab="focus"><span class="ti">◎</span><span>1件</span></a>
+  <a href="#/overview" data-tab="overview"><span class="ti">☷</span><span>リスト</span></a>
+</nav>
+
 <!-- 編集ダイアログ -->
 <dialog id="edit-dialog" aria-labelledby="edit-title">
   <form method="dialog" id="edit-form" autocomplete="off">
@@ -464,7 +489,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 /* =========================================================
  * 定数
  * ======================================================= */
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '2.0.0';
 const SCHEMA_VERSION = 1;
 const DB_NAME = 'nagekomi';
 const DB_VERSION = 1;
@@ -979,7 +1004,7 @@ function tilesHtml() {
     </a>`;
   const of = ids => open.filter(i => ids.includes(i.list));
   const overdueOf = arr => arr.filter(i => { const d = dueDate(i); return d && d < today; }).length;
-  const tiles = activeLists().filter(l => !l.stock && l.id !== 'inbox').map(l => {
+  const tiles = activeLists().filter(l => !l.stock).map(l => {
     const arr = of([l.id]);
     return tile(`#/list/${encodeURIComponent(l.id)}`, l.name, arr.length, overdueOf(arr));
   });
@@ -989,8 +1014,21 @@ function tilesHtml() {
   tiles.push(tile('#/done', '今日の完了', doneToday));
   return `<div class="tiles">${tiles.join('')}</div>`;
 }
+// 投げ込みタブ: 投げ込み欄 + インボックス(その場で整理)
 function renderHome() {
-  const inboxCount = openItemsOf('inbox').length;
+  const inbox = openItemsOf('inbox');
+  $('#home-dynamic').innerHTML = `
+    <a class="inbox-link" href="#/list/inbox" data-nav>
+      <span>インボックス</span>
+      <span><span class="count${inbox.length ? '' : ' zero'}">${inbox.length ? inbox.length + ' 件' : '空です'}</span><span class="chev">›</span></span>
+    </a>
+    ${inbox.length || organizeState() ? organizeBtnHtml() : ''}
+    ${inbox.length ? `<ul class="rows" style="margin-top:8px">${inbox.map(i => rowHtml(i)).join('')}</ul>
+      <p class="gap-hint">項目を押すと、リスト・期限・見込み時間を付けて振り分けられます。</p>` : ''}
+  `;
+}
+// 1件タブ: 1件表示 + 絞り込み(条件で探す) + 今日やる
+function renderFocus() {
   const queue = focusQueue();
   const today = openItemsOf('today');
   const head = queue[0];
@@ -1003,22 +1041,18 @@ function renderHome() {
     ? `<div class="focus-card"><p class="empty">条件に当てはまる項目は残っていません。</p>
         <button type="button" class="btn" data-action="focus-filter-off">絞り込みを解除</button></div>`
     : `<div class="focus-card"><p class="empty">「${esc(listName('today'))}」「${esc(listName('todo'))}」は空です。<br>インボックスの項目を振り分けると、ここに1件ずつ表示されます。</p></div>`;
-
-  $('#home-dynamic').innerHTML = `
-    <a class="inbox-link" href="#/list/inbox" data-nav>
-      <span>インボックス</span>
-      <span><span class="count${inboxCount ? '' : ' zero'}">${inboxCount ? inboxCount + ' 件' : '空です'}</span><span class="chev">›</span></span>
-    </a>
-    ${inboxCount || organizeState() ? organizeBtnHtml() : ''}
-    <h2 class="section-title">1件表示</h2>
+  $('#focus-dynamic').innerHTML = `
     ${filterBar}
     ${focus}
     ${searchHtml()}
     <h2 class="section-title">${esc(listName('today'))}(${today.length})</h2>
     ${today.length ? `<ul class="rows">${today.map(i => rowHtml(i)).join('')}</ul>` : `<p class="empty">「${esc(listName('today'))}」の項目はありません。</p>`}
-    <h2 class="section-title">リスト</h2>
-    ${tilesHtml()}
   `;
+}
+// リストタブ: 各リストの件数
+function renderOverview() {
+  $('#view-overview').innerHTML = `<h2 class="section-title" style="margin-top:4px">リスト</h2>${tilesHtml()}
+    <p class="gap-hint">押すとそのリストを開きます。ためておくリスト・タグ・完了済みは左上の ☰ から。</p>`;
 }
 
 const listShowDone = new Set();
@@ -1217,6 +1251,8 @@ function render() {
   renderSyncChip();
   switch (route.view) {
     case 'home': renderHome(); break;
+    case 'focus': renderFocus(); break;
+    case 'overview': renderOverview(); break;
     case 'list': renderList(route.arg); break;
     case 'menu': renderMenu(); break;
     case 'done': renderDone(); break;
@@ -1230,23 +1266,29 @@ function render() {
  * 画面の切り替え(URL の # で管理)
  * ======================================================= */
 let inAppNavs = 0;
+const TABS = new Set(['home', 'focus', 'overview']);
+const TAB_HASH = { home: '#/', focus: '#/focus', overview: '#/overview' };
+let lastTab = 'home';
 function parseRoute() {
   const parts = (location.hash.replace(/^#/, '') || '/').split('/').filter(Boolean);
   const view = parts[0] || 'home';
   if (view === 'list' && parts[1]) return { view: 'list', arg: decodeURIComponent(parts[1]) };
   if (view === 'tag' && parts[1]) return { view: 'tag', arg: decodeURIComponent(parts.slice(1).join('/')) };
-  if (['menu', 'done', 'settings', 'lists'].includes(view)) return { view, arg: null };
+  if (['menu', 'done', 'settings', 'lists', 'focus', 'overview'].includes(view)) return { view, arg: null };
   return { view: 'home', arg: null };
 }
 function applyRoute() {
   const prev = route;
   route = parseRoute();
-  for (const v of ['home', 'list', 'menu', 'done', 'settings', 'lists', 'tag']) $('#view-' + v).hidden = v !== route.view;
-  const titles = { home: '投げ込み', menu: 'メニュー', done: '完了済み', settings: '設定・同期', lists: 'リストの追加・編集' };
+  for (const v of ['home', 'focus', 'overview', 'list', 'menu', 'done', 'settings', 'lists', 'tag']) $('#view-' + v).hidden = v !== route.view;
+  const titles = { home: '投げ込み', focus: '1件表示', overview: 'リスト', menu: 'メニュー', done: '完了済み', settings: '設定・同期', lists: 'リストの追加・編集' };
   $('#title').textContent = route.view === 'list' ? listName(route.arg) : route.view === 'tag' ? `タグ: ${route.arg}` : titles[route.view];
   const nav = $('#nav-btn');
-  if (route.view === 'home') { nav.textContent = '☰'; nav.setAttribute('aria-label', 'メニュー'); }
-  else { nav.textContent = '‹'; nav.setAttribute('aria-label', '戻る'); }
+  if (TABS.has(route.view)) {
+    lastTab = route.view;
+    nav.textContent = '☰'; nav.setAttribute('aria-label', 'メニュー');
+  } else { nav.textContent = '‹'; nav.setAttribute('aria-label', '戻る'); }
+  for (const a of document.querySelectorAll('#tabbar a')) a.classList.toggle('on', a.dataset.tab === route.view);
   if (route.view === 'settings' && prev.view !== 'settings') fillSettingsForm();
   if (route.view === 'list' && (prev.view !== 'list' || prev.arg !== route.arg)) {
     $('#list-capture-text').value = '';
@@ -1263,7 +1305,7 @@ function go(hash) {
 }
 function goBack() {
   if (inAppNavs > 0) { inAppNavs--; history.back(); }
-  else location.replace('#/');
+  else location.replace(TAB_HASH[lastTab]);
 }
 
 /* =========================================================
@@ -1434,7 +1476,7 @@ async function startTimer(id) {
   const others = [...state.items.values()].filter(o => o.id !== id && isRunning(o)).map(o => changed(o, pauseChanges(o, now)));
   await saveLocal([...others, changed(it, { timer_started_at: formatTime(now) })]);
   showToast(others.length ? '計測を切り替えました' : '計測を始めました');
-  if (route.view === 'home') { const card = $('.focus-card'); if (card) card.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  if (route.view === 'focus') { const card = $('.focus-card'); if (card) card.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
 }
 async function pauseTimer(id) {
   const it = state.items.get(id);
@@ -1570,7 +1612,23 @@ function bindEvents() {
     }
   });
 
-  $('#nav-btn').addEventListener('click', () => { if (route.view === 'home') go('#/menu'); else goBack(); });
+  $('#nav-btn').addEventListener('click', () => { if (TABS.has(route.view)) go('#/menu'); else goBack(); });
+  // タブ: 履歴を積まずに切り替える
+  $('#tabbar').addEventListener('click', e => {
+    const a = e.target.closest('a[data-tab]');
+    if (!a) return;
+    e.preventDefault();
+    inAppNavs = 0;
+    if (location.hash !== a.getAttribute('href')) location.replace(a.getAttribute('href'));
+  });
+  // キーボードが出て画面の高さが縮んだときだけ、タブを隠す(入力欄の上にタブが乗らないように)
+  if (window.visualViewport) {
+    const fitTabbar = () => { $('#tabbar').hidden = window.visualViewport.height < window.innerHeight - 150; };
+    window.visualViewport.addEventListener('resize', fitTabbar);
+  }
+  // ズーム防止: iPhone はページの指定を無視して2本指の拡大をすることがあるため、操作自体を打ち消す
+  for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+
   $('#sync-chip').addEventListener('click', () => go('#/settings'));
   window.addEventListener('hashchange', applyRoute);
 

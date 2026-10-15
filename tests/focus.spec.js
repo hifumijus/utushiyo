@@ -12,6 +12,7 @@ async function addTo(page, list, text) {
 
 test('今日やる・やることが空なら、その旨を表示する', async ({ page }) => {
   await openApp(page);
+  await page.goto('#/focus');
   await expect(page.locator('.focus-card')).toContainText('「今日やる」「やること」は空です');
   await expect(page.locator('.focus-card [data-action]')).toHaveCount(0);
 });
@@ -22,7 +23,7 @@ test('今日やるを先に、古い順に1件ずつ表示し、今日やるが�
   await addTo(page, 'today', '今日1');
   await addTo(page, 'today', '今日2');
   await addTo(page, 'books', '本は出さない');
-  await page.goto('#/');
+  await page.goto('#/focus');
 
   const title = page.locator('.focus-title');
   await expect(page.locator('.focus-meta')).toContainText('残り 3 件');
@@ -43,7 +44,7 @@ test('後回しは順番の最後へ回す。素早く続けて押しても毎�
   await addTo(page, 'today', 'A');
   await addTo(page, 'today', 'B');
   await addTo(page, 'today', 'C');
-  await page.goto('#/');
+  await page.goto('#/focus');
   const title = page.locator('.focus-title');
 
   const seen = [];
@@ -62,13 +63,13 @@ test('後回しは順番の最後へ回す。素早く続けて押しても毎�
   expect(items.every(i => i.status === 'open' && i.list === 'today')).toBe(true);
 });
 
-test('1件表示から完了すると、ホームの「今日やる」一覧からも消える', async ({ page }) => {
+test('1件表示から完了すると、1件タブの「今日やる」一覧からも消える', async ({ page }) => {
   await openApp(page);
   await addTo(page, 'today', 'ひとつだけ');
-  await page.goto('#/');
-  await expect(page.locator('#home-dynamic .rows .row')).toHaveCount(1);
+  await page.goto('#/focus');
+  await expect(page.locator('#focus-dynamic .rows .row')).toHaveCount(1);
   await page.locator('.focus-card [data-action=done]').click();
-  await expect(page.locator('#home-dynamic .rows .row')).toHaveCount(0);
+  await expect(page.locator('#focus-dynamic .rows .row')).toHaveCount(0);
   expect((await storedItems(page))[0].status).toBe('done');
 });
 
@@ -81,7 +82,7 @@ test('他の端末の時計が進んでいて未来の時刻が付いた項目�
   await configureSync(page);
   await expectSyncState(page, 'synced');
   await addTo(page, 'today', '手元の項目');
-  await page.goto('#/');
+  await page.goto('#/focus');
 
   const title = page.locator('.focus-title');
   await expect(title).toHaveText('手元の項目'); // updated_at が古い順なので手元の項目が先
