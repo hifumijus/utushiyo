@@ -1,0 +1,11 @@
+{
+  "name": "utushiyo",
+  "private": true,
+  "description": "投げ込み・整理アプリ(アプリ本体は index.html。ここにはテスト用の設定だけを置く)",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}
