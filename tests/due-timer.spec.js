@@ -1,4 +1,4 @@
-// 期限(今日・今週・日付)、見込み時間、タイマー、すきま時間の提案
+// 期限(今日・今週・日付)、見込み時間、タイマー
 const { test, expect } = require('@playwright/test');
 const { openApp, storedItems } = require('./helpers');
 
@@ -140,7 +140,11 @@ test.describe('期限', () => {
 });
 
 test.describe('見込み時間とタイマー', () => {
-  test.beforeEach(async ({ page }) => { await page.clock.install({ time: THURSDAY }); });
+  // 時計の自然な進みを止め、テストが runFor で進めた分だけ時間が経つようにする(画面操作の待ち時間で計測値がぶれないように)
+  test.beforeEach(async ({ page }) => {
+    await page.clock.install({ time: new Date(THURSDAY.getTime() - 5000) });
+    await page.clock.pauseAt(THURSDAY);
+  });
 
   async function setupOne(page, text = '作業A', est = '15') {
     await openApp(page);
@@ -237,8 +241,8 @@ test.describe('見込み時間とタイマー', () => {
     const second = first === 'P' ? 'Q' : 'P';
     await page.locator('.focus-card [data-action=start]').click();
     await page.clock.runFor(60 * 1000);
-    // 計測中のまま、すきま時間の提案から別の項目を始める
-    await page.locator('[data-action=toggle-gap]').click();
+    // 計測中のまま、「条件で探す」の結果から別の項目を始める
+    await page.locator('[data-action=toggle-search]').click();
     await page.locator('.row', { hasText: second }).locator('[data-action=start]').click();
     await expect(page.locator('#toast-msg')).toHaveText('計測を切り替えました');
     await expect(page.locator('.focus-title')).toHaveText(second);
@@ -262,38 +266,5 @@ test.describe('見込み時間とタイマー', () => {
     await page.locator('.focus-card [data-action=done]').click();
     await page.goto('#/done');
     await expect(page.locator('#view-done .row')).toContainText('実際 20分(目安 15分)');
-  });
-});
-
-test.describe('すきま時間で探す', () => {
-  test.beforeEach(async ({ page }) => { await page.clock.install({ time: THURSDAY }); });
-
-  test('見込み時間が収まる項目を、期限の近い順・時間を使い切れる順に出し、そこから始められる', async ({ page }) => {
-    await openApp(page);
-    const plan = [['todo', '五分の用事', '5', null], ['chores', '十五分の掃除', '15', null], ['shopping', '期限の近い買い物', '5', '2026-10-15'],
-      ['todo', '三十分の作業', '30', null], ['work', '会社の仕事', '5', null], ['todo', '見込みなし', null, null]];
-    for (const [list, text, est, due] of plan) {
-      await addTo(page, list, text);
-      if (est || due) {
-        await editRow(page, text);
-        if (est) await page.locator('#edit-est').fill(est);
-        if (due) await page.locator('#edit-due').fill(due);
-        await save(page);
-      }
-    }
-    await page.goto('#/');
-    await page.locator('[data-action=toggle-gap]').click();
-    const rows = page.locator('#home-dynamic .rows').filter({ has: page.locator('.row-start') }).locator('.row');
-    await expect(rows.locator('.row-title')).toHaveText(['期限の近い買い物', '十五分の掃除', '五分の用事']); // 15分の候補
-    await expect(page.locator('.gap-hint')).toContainText('見込み時間が未登録の項目(1 件)は対象外です');
-
-    await page.locator('[data-action=gap][data-min="5"]').click();
-    await expect(rows.locator('.row-title')).toHaveText(['期限の近い買い物', '五分の用事']);
-    await page.locator('[data-action=gap][data-min="60"]').click();
-    await expect(rows).toHaveCount(4); // 会社の仕事は対象外
-
-    await rows.filter({ hasText: '十五分の掃除' }).locator('[data-action=start]').click();
-    await expect(page.locator('.focus-title')).toHaveText('十五分の掃除');
-    await expect(page.locator('.focus-card [data-action=pause]')).toBeVisible();
   });
 });
