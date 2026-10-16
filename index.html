@@ -114,7 +114,7 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 /* 投げ込み欄 */
 .capture { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; }
 .capture textarea {
-  display: block; width: 100%; min-height: 48px; max-height: 40vh; resize: none;
+  display: block; width: 100%; min-height: 34px; max-height: 40vh; resize: none;
   border: 0; outline: none; background: transparent; font-size: 16px; line-height: 1.5; padding: 4px 4px;
 }
 .capture-actions { display: flex; justify-content: space-between; align-items: center; gap: 4px 8px; margin-top: 2px; flex-wrap: wrap; }
@@ -167,7 +167,7 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .chip {
   min-height: 34px; padding: 0 11px; border-radius: 17px; border: 1px solid var(--line);
-  background: var(--surface); font-size: 13px; color: var(--text);
+  background: var(--surface); font-size: 13px; color: var(--text); white-space: nowrap;
 }
 .chip.on { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
 .chips input[type=date], .chips input[type=number] {
@@ -251,12 +251,16 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 16px calc(var(--safe-bott
 
 /* フォーム */
 .field { display: block; margin-bottom: 14px; }
-.field > span { display: block; font-size: 13px; color: var(--muted); margin: 0 4px 6px; }
+.field > span, .field > label > span { display: block; font-size: 13px; color: var(--muted); margin: 0 4px 6px; }
 .field input, .field textarea, .field select {
   width: 100%; min-height: 46px; padding: 10px 12px; border-radius: 12px;
   border: 1px solid var(--line); background: var(--surface); font-size: 16px;
 }
-.field textarea { resize: vertical; min-height: 96px; line-height: 1.5; }
+.field textarea { resize: none; min-height: 46px; line-height: 1.5; display: block; }
+.tag-picker { margin-top: 8px; }
+.tag-picker .chip.add { border-style: dashed; color: var(--accent); }
+.field .chip small { display: inline; margin: 0 0 0 4px; font-size: 12px; }
+.tag-picker .tag-new { font-size: 12px; color: var(--muted); margin: 0 2px; }
 .field small { display: block; font-size: 12px; color: var(--muted); margin: 6px 4px 0; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
 .card p { margin: 0 0 8px; }
@@ -306,7 +310,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   <!-- ホーム -->
   <section class="view" id="view-home">
     <form class="capture" id="capture-form" autocomplete="off">
-      <textarea id="capture-text" rows="2" aria-label="投げ込み欄" placeholder="思いついたことを書く" enterkeyhint="enter"></textarea>
+      <textarea id="capture-text" rows="1" aria-label="投げ込み欄" placeholder="思いついたことを書く" enterkeyhint="enter"></textarea>
       <div class="capture-actions">
         <div class="left">
           <label class="split-toggle"><input type="checkbox" class="split-check"> 1行ずつ別の項目にする</label>
@@ -333,7 +337,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   <!-- リスト -->
   <section class="view" id="view-list" hidden>
     <form class="capture" id="list-capture-form" autocomplete="off">
-      <textarea id="list-capture-text" rows="2" aria-label="このリストに追加" placeholder="このリストに追加" enterkeyhint="enter"></textarea>
+      <textarea id="list-capture-text" rows="1" aria-label="このリストに追加" placeholder="このリストに追加" enterkeyhint="enter"></textarea>
       <div class="capture-actions">
         <div class="left">
           <label class="split-toggle"><input type="checkbox" class="split-check"> 1行ずつ別の項目にする</label>
@@ -432,10 +436,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     </div>
     <div class="dlg-body">
       <label class="field"><span>本文(1行目が見出しになります)</span>
-        <textarea id="edit-text" rows="3"></textarea>
+        <textarea id="edit-text" rows="1" class="grow"></textarea>
       </label>
       <label class="field"><span>メモ</span>
-        <textarea id="edit-note" rows="3"></textarea>
+        <textarea id="edit-note" rows="1" class="grow"></textarea>
       </label>
       <label class="field"><span>リスト</span>
         <select id="edit-list"></select>
@@ -446,9 +450,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       <div class="field"><span>見込み時間</span>
         <div class="chips est-picker"><button type="button" class="chip" data-set="">なし</button><button type="button" class="chip" data-set="5">5分</button><button type="button" class="chip" data-set="15">15分</button><button type="button" class="chip" data-set="30">30分</button><button type="button" class="chip" data-set="60">60分</button><input id="edit-est" type="number" inputmode="numeric" min="1" max="1440" placeholder="分" aria-label="見込み時間(分)"></div>
       </div>
-      <label class="field"><span>タグ(読点またはカンマで区切る)</span>
+      <div class="field"><label for="edit-tags"><span>タグ(候補を押すか、読点で区切って入力)</span></label>
         <input id="edit-tags" autocapitalize="off" placeholder="例: 急ぎ、電話">
-      </label>
+        <div class="chips tag-picker" id="edit-tag-picker" aria-label="タグの候補"></div>
+      </div>
       <div class="dlg-foot">
         <button class="btn btn-block" type="button" id="edit-toggle-done">完了にする</button>
         <button class="btn btn-block btn-danger" type="button" id="edit-delete">削除</button>
@@ -489,7 +494,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 /* =========================================================
  * 定数
  * ======================================================= */
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.1.0';
 const SCHEMA_VERSION = 1;
 const DB_NAME = 'nagekomi';
 const DB_VERSION = 1;
@@ -648,6 +653,11 @@ function addLaterToday(id) {
   const set = laterToday();
   set.add(id);
   try { localStorage.setItem('laterToday', JSON.stringify({ date: todayStr(), ids: [...set] })); } catch { /* 使えなくても動作は続ける */ }
+}
+// 入力欄の高さを中身に合わせる(1行から始め、行が増えたら広げる。画面の4割で止めて中でスクロール)
+function autoGrow(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight + 2, window.innerHeight * 0.4) + 'px';
 }
 function parseTags(s) {
   return String(s || '').split(/[,、，]/).map(t => t.trim()).filter(Boolean);
@@ -1080,6 +1090,66 @@ function tagCounts() {
   }
   return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ja'));
 }
+// タグの候補(編集画面)。よく使うものだけを少し出し、打ち始めたら絞り込む(長い一覧にしないため)
+const TAG_PICKER_TOP = 8;
+let tagPickerAll = false;
+function allTagUsage() {
+  // [タグ, 未完了の件数, 全体の件数]。未完了で多く使うものほど前に出す(完了済みだけのタグも候補に残す)
+  const m = new Map();
+  for (const i of visibleItems()) {
+    for (const t of new Set(Array.isArray(i.tags) ? i.tags : [])) {
+      const c = m.get(t) || [0, 0];
+      if (i.status === 'open') c[0]++;
+      c[1]++;
+      m.set(t, c);
+    }
+  }
+  return [...m.entries()].map(([t, [open, all]]) => [t, open, all])
+    .sort((a, b) => b[1] - a[1] || b[2] - a[2] || a[0].localeCompare(b[0], 'ja'));
+}
+// ひらがな・カタカナ、大文字・小文字、全角・半角の違いを無視して比べる
+function foldKana(s) {
+  return String(s).normalize('NFKC').toLowerCase().replace(/[\u30a1-\u30f6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+}
+function tagFragment(raw) {
+  return (String(raw).match(/[^,、，]*$/) || [''])[0].trim();
+}
+function renderTagPicker() {
+  const input = $('#edit-tags'), box = $('#edit-tag-picker');
+  if (!input || !box) return;
+  const raw = input.value;
+  const frag = tagFragment(raw);
+  const tags = parseTags(raw);
+  const chosen = frag ? tags.slice(0, -1) : tags; // 打ちかけの語はまだ選んだことにしない
+  const usage = allTagUsage();
+  const count = t => (usage.find(([x]) => x === t) || [, 0])[1];
+  const chip = (t, on, cls = '') => `<button type="button" class="chip${on ? ' on' : ''}${cls}" data-tag="${esc(t)}" aria-pressed="${on}">${on ? '✓ ' : ''}${esc(t)}${count(t) ? ` <small>${count(t)}</small>` : ''}</button>`;
+  let html = chosen.map(t => chip(t, true)).join('');
+  if (frag) {
+    const f = foldKana(frag);
+    const hits = usage.map(([t]) => t).filter(t => !chosen.includes(t) && foldKana(t).includes(f));
+    html += hits.slice(0, TAG_PICKER_TOP).map(t => chip(t, false, ' add')).join('');
+    if (!hits.some(t => t === frag)) html += `<span class="tag-new">「${esc(frag)}」は新しいタグになります</span>`;
+  } else {
+    const rest = usage.map(([t]) => t).filter(t => !chosen.includes(t));
+    const shown = tagPickerAll ? rest : rest.slice(0, TAG_PICKER_TOP);
+    html += shown.map(t => chip(t, false, ' add')).join('');
+    if (rest.length > TAG_PICKER_TOP) html += `<button type="button" class="opts-btn" data-tag-more>${tagPickerAll ? '少なく表示 ▴' : `ほか ${rest.length - TAG_PICKER_TOP} 件 ▾`}</button>`;
+    if (!usage.length) html += '<span class="tag-new">まだタグはありません</span>';
+  }
+  box.innerHTML = html;
+}
+function pickTag(t) {
+  const input = $('#edit-tags');
+  const raw = input.value;
+  const frag = tagFragment(raw);
+  let tags = parseTags(raw);
+  if (frag) tags = tags.slice(0, -1);
+  if (tags.includes(t)) tags = tags.filter(x => x !== t);
+  else tags.push(t);
+  input.value = tags.length ? tags.join('、') + '、' : '';
+  renderTagPicker();
+}
 function renderTag(tag) {
   const items = visibleItems().filter(i => i.status === 'open' && Array.isArray(i.tags) && i.tags.includes(tag));
   const groups = [...activeLists().map(l => l.id), ...unknownListIds()]
@@ -1354,7 +1424,7 @@ function openEditor(id) {
     list: it.list,
     due: it.due ? String(it.due).slice(0, 10) : '',
     est: estimateOf(it) ? String(estimateOf(it)) : '',
-    tags: (Array.isArray(it.tags) ? it.tags : []).join('、'),
+    tags: (Array.isArray(it.tags) ? it.tags : []).map(t => t + '、').join(''), // 末尾の読点で、続けて打てる・候補が選択済みとして出る
   };
   $('#edit-text').value = initial.text;
   $('#edit-note').value = initial.note;
@@ -1372,8 +1442,11 @@ function openEditor(id) {
     `更新: ${esc(displayTime(it.updated_at))}`,
   ].filter(Boolean).join('<br>');
   editing = { id, initial };
+  tagPickerAll = false;
+  renderTagPicker();
   const dlg = $('#edit-dialog');
   if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+  for (const ta of dlg.querySelectorAll('textarea.grow')) { autoGrow(ta); ta.scrollTop = 0; }
 }
 function closeEditor() {
   editing = null;
@@ -1397,7 +1470,7 @@ function collectEdits() {
   if (cur.list !== initial.list) ch.list = cur.list;
   if (cur.due !== initial.due) ch.due = cur.due || null;
   if (cur.est !== initial.est) ch.estimate_min = parseEstimate(cur.est);
-  if (cur.tags !== initial.tags) ch.tags = parseTags(cur.tags);
+  if (parseTags(cur.tags).join('\n') !== parseTags(initial.tags).join('\n')) ch.tags = parseTags(cur.tags);
   return ch;
 }
 async function saveEditor() {
@@ -1493,7 +1566,6 @@ async function removeItem(id) {
 
 function bindEvents() {
   // 投げ込み欄(ホームとリスト画面の2か所)
-  const autoGrow = ta => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight + 2, window.innerHeight * 0.4) + 'px'; };
   let split = false;
   try { split = localStorage.getItem('splitLines') === '1'; } catch { /* 使えなくても既定値で動く */ }
   setupPickers();
@@ -1634,6 +1706,17 @@ function bindEvents() {
 
   // 編集ダイアログ
   $('#edit-form').addEventListener('submit', e => { e.preventDefault(); saveEditor(); });
+  for (const ta of $('#edit-dialog').querySelectorAll('textarea.grow')) ta.addEventListener('input', () => autoGrow(ta));
+  $('#edit-tags').addEventListener('input', renderTagPicker);
+  const picker = $('#edit-tag-picker');
+  // 入力中に候補を押してもキーボードを閉じない
+  picker.addEventListener('pointerdown', e => { if (e.target.closest('button') && document.activeElement === $('#edit-tags')) e.preventDefault(); });
+  picker.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.hasAttribute('data-tag-more')) { tagPickerAll = !tagPickerAll; renderTagPicker(); return; }
+    pickTag(b.dataset.tag);
+  });
   $('#edit-cancel').addEventListener('click', closeEditor);
   $('#edit-dialog').addEventListener('cancel', e => { e.preventDefault(); closeEditor(); });
   $('#edit-toggle-done').addEventListener('click', async () => {
