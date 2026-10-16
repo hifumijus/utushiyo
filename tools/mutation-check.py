@@ -66,6 +66,16 @@ M = [
  ("ズーム: ダブルタップの拡大を止めない", "index.html", "touch-action: manipulation; }", "}", "tabs"),
  ("オフライン: キャッシュを使わない", "sw.js", "if (cached) {", "if (false) {", "offline"),
  ("トークン: 設定画面に表示してしまう", "index.html", "$('#set-token').value = '';", "$('#set-token').value = state.token;", "sync"),
+ ("編集: 開いたとき高さを合わせない", "index.html", "  for (const ta of dlg.querySelectorAll('textarea.grow')) { autoGrow(ta); ta.scrollTop = 0; }\n", "", "edit-ui"),
+ ("編集: 入力で広がらない", "index.html", "  for (const ta of $('#edit-dialog').querySelectorAll('textarea.grow')) ta.addEventListener('input', () => autoGrow(ta));\n", "", "edit-ui"),
+ ("編集: 高さの上限が無い", "index.html", "Math.min(ta.scrollHeight + 2, window.innerHeight * 0.4)", "ta.scrollHeight + 2", "edit-ui"),
+ ("タグ候補: 全部出す", "index.html", "tagPickerAll ? rest : rest.slice(0, TAG_PICKER_TOP)", "rest", "edit-ui"),
+ ("タグ候補: 打っても絞らない", "index.html", "foldKana(t).includes(f)", "true", "edit-ui"),
+ ("タグ候補: かなの違いを無視しない", "index.html", ".replace(/[\\u30a1-\\u30f6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60))", "", "edit-ui"),
+ ("タグ候補: 押しても外れない", "index.html", "  if (tags.includes(t)) tags = tags.filter(x => x !== t);\n  else tags.push(t);", "  tags.push(t);", "edit-ui"),
+ ("タグ候補: 打ちかけの語を残す", "index.html", "  if (frag) tags = tags.slice(0, -1);\n", "", "edit-ui"),
+ ("タグ候補: よく使う順にしない", "index.html", ".sort((a, b) => b[1] - a[1] || b[2] - a[2] || a[0].localeCompare(b[0], 'ja'));", ".sort((a, b) => a[0].localeCompare(b[0], 'ja'));", "edit-ui"),
+ ("編集: 末尾の読点だけでも書き換える", "index.html", "if (parseTags(cur.tags).join('\\n') !== parseTags(initial.tags).join('\\n'))", "if (cur.tags !== initial.tags)", "edit-ui"),
 ]
 bad = []
 for name, f, a, b, spec in M:
